@@ -2,7 +2,6 @@ from __future__ import annotations
 from networkx import DiGraph
 from enum import Enum
 
-
 class Relation(Enum):
     father = 0
     mother = 1
@@ -16,62 +15,66 @@ class Person:
     def __init__(self, D: DiGraph, id: int) -> None:
         self.__graph = D
         self.__id = id
-        print('FROM Person__init__:  ', id)
 
-    def id(self) -> int:
-        return self.__id
+    # def id(self) -> int:
+    #     return self.__id
 
+    @property
     def name(self):
-        return self.__graph.nodes[self.__id]['name']
+        return self.__graph.nodes[self]['name']
 
-    def _get_parents_dict(self) -> dict[str, Person]:
-        parents = {}
+    def _relatives(self) -> dict[str, Person]:
+        relatives = {Relation.father: None, Relation.mother: None, Relation.son: [
+        ], Relation.daughter: [], Relation.husband: None, Relation.wife: None}
 
-        for neighbors_id in self.__graph.neighbors(self.__id):
-            if self.__graph.edges[self.__id, neighbors_id]['rel'] == Relation.father:
-                parents[Relation.father] = Person(self.__graph, neighbors_id)
-            elif self.__graph.edges[self.__id, neighbors_id]['rel'] == Relation.mother:
-                parents[Relation.mother] = Person(self.__graph, neighbors_id)
+        for relative in self.__graph.neighbors(self):
+            if self.__graph.edges[self, relative]['rel'] == Relation.son:
+                relatives[Relation.son].append(relative)
+            elif self.__graph.edges[self, relative]['rel'] == Relation.daughter:
+                relatives[Relation.daughter].append(relative)
+            elif self.__graph.edges[self, relative]['rel'] == Relation.father:
+                relatives[Relation.father] = relative
+            elif self.__graph.edges[self, relative]['rel'] == Relation.mother:
+                relatives[Relation.mother] = relative
+            elif self.__graph.edges[self, relative]['rel'] == Relation.husband:
+                relatives[Relation.husband] = relative
+            elif self.__graph.edges[self, relative]['rel'] == Relation.wife:
+                relatives[Relation.wife] = relative
 
-        return parents
-
+        return relatives
+    @property
     def parents(self) -> list[Person]:
-        return list(self._get_parents_dict().values())
+        relatives = self._relatives()
+        return [relatives[Relation.father], relatives[Relation.mother]]
 
+    @property
     def father(self) -> Person:
-        return self._get_parents_dict()[Relation.father]
+        return self._relatives()[Relation.father]
 
+    @property
     def mother(self) -> Person:
-        return self._get_parents_dict()[Relation.mother]
+        return self._relatives()[Relation.mother]
 
-    def _get_children_dict(self) -> dict[str, Person]:
-        children = {Relation.son: [], Relation.daughter: []}
-
-        for neighbors_id in self.__graph.neighbors(self.__id):
-            if self.__graph.edges[self.__id, neighbors_id]['rel'] == Relation.son:
-                children[Relation.son].append(
-                    Person(self.__graph, neighbors_id))
-            elif self.__graph.edges[self.__id, neighbors_id]['rel'] == Relation.daughter:
-                children[Relation.daughter].append(
-                    Person(self.__graph, neighbors_id))
-
-        return children
-
+    @property
     def children(self) -> list[Person]:
-        children = self._get_children_dict()
-        return [*children[Relation.son], *children[Relation.daughter]]
+        relatives = self._relatives()
+        return [*relatives[Relation.son], *relatives[Relation.daughter]]
 
+    @property
     def sons(self) -> list[Person]:
-        return self._get_children_dict()[Relation.son]
+        return self._relatives()[Relation.son]
 
+    @property
     def daughters(self) -> list[Person]:
-        return self._get_children_dict()[Relation.daughter]
+        return self._relatives()[Relation.daughter]
 
+    @property
     def husband(self):
-        pass
+        return self._relatives()[Relation.husband]
 
+    @property
     def wife(self):
-        pass
+        return self._relatives()[Relation.wife]
 
     def __repr__(self) -> str:
         return f'Person({self.__id})'
@@ -80,11 +83,7 @@ class Person:
 class Lineage:
     def __init__(self) -> None:
         self._graph = DiGraph()
-        # self.__counter=len(self._graph.nodes)
         self.__counter = 0
-
-    def get_name(self, node: int) -> str:
-        return self._graph.nodes[node]['name']
 
     def __new_id(self):
         id = self.__counter
@@ -103,41 +102,23 @@ class Lineage:
         self._graph.add_edges_from([(from_, to, {'rel': relation}), ])
 
     def add_person(self, name: str, gender: str, father: Person = None, mother: Person = None) -> Person:
-        id = self.__new_id()
-        self._graph.add_nodes_from([(id, {'name': name, 'gender': gender}), ])
+        person = Person(self._graph, self.__new_id())
+        self._graph.add_nodes_from(
+            [(person, {'name': name, 'gender': gender}), ])
 
         child = Relation.son if gender == 'm' else Relation.daughter
         if father is not None:
-            # self._graph.add_edges_from([(father, id, {'rel': child}), ])
-            # self._graph.add_edges_from(
-            #     [(id, father, _relation(Relation.father)), ])
-            self._add_relation(father.id(), id, child)
-            self._add_relation(id, father.id(), Relation.father)
+            self._add_relation(father, person, child)
+            self._add_relation(person, father, Relation.father)
         if mother is not None:
-            # self._graph.add_edges_from([(mother, id, {'rel': child}), ])
-            # self._graph.add_edges_from(
-            #     [(id, mother, {'rel': Relation.mother}), ])
-            self._add_relation(mother.id(), id, child)
-            self._add_relation(id, mother.id(), Relation.mother)
-        return Person(self._graph, id)
+            self._add_relation(mother, person, child)
+            self._add_relation(person, mother, Relation.mother)
+        return person
 
-    # # def add_children(self, D, parent: id, children: list[int]):
-    # #     pass
+    def add_spouse(self, husband: Person, wife: Person):
 
-    # def add_spouse(self, husband: int, wife: int):
-    #     if Relation.wife not in self._graph.nodes[husband]:
-    #         self._graph.nodes[husband][Relation.wife] = []
-    #     if Relation.husband not in self._graph.nodes[wife]:
-    #         self._graph.nodes[wife][Relation.husband] = []
-
-    #     self._graph.nodes[husband][Relation.wife].append(wife)
-    #     self._graph.nodes[wife][Relation.husband].append(husband)
-
-    # def find_wife(self, id: int) -> int:
-    #     return self._graph.nodes[id][Relation.wife]
-
-    # def find_husband(self, id: int) -> int:
-    #     return self._graph.nodes[id][Relation.husband]
+        self._add_relation(husband, wife, Relation.wife)
+        self._add_relation(wife, husband, Relation.husband)
 
     def persons(self):
         return self._graph.nodes
