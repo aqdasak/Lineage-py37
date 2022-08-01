@@ -19,7 +19,8 @@ class Person:
         self.__id = id
         self.__name = name
         self.__gender = gender[0].lower()
-        self.__relatives: dict[Relation, Person | list[Person]] = {}
+        self.__relatives: dict[Relation, list[Person]] = {Relation.father: [], Relation.mother: [], Relation.son: [],
+                         Relation.daughter: [], Relation.husband: [], Relation.wife: []}
         self.__relatives_rebuild_reqd = True
 
     @property
@@ -37,15 +38,21 @@ class Person:
     @property
     def parents(self) -> list[Person]:
         relatives = self._relatives()
-        return [relatives[Relation.father], relatives[Relation.mother]]
+        return [*relatives[Relation.father], *relatives[Relation.mother]]
 
     @property
-    def father(self) -> Person:
-        return self._relatives()[Relation.father]
+    def father(self) -> Person|None:
+        father_list=self._relatives()[Relation.father]
+        if father_list:
+            return father_list[0]
+        return None
 
     @property
-    def mother(self) -> Person:
-        return self._relatives()[Relation.mother]
+    def mother(self) -> Person|None:
+        mother_list=self._relatives()[Relation.mother]
+        if mother_list:
+            return mother_list[0]
+        return None
 
     @property
     def children(self) -> list[Person]:
@@ -76,8 +83,8 @@ class Person:
 
     def _relatives(self) -> dict[str, Person]:
         if self.__relatives_rebuild_reqd:
-            relatives = {Relation.father: None, Relation.mother: None, Relation.son: [],
-                         Relation.daughter: [], Relation.husband: None, Relation.wife: None}
+            relatives = {Relation.father: [], Relation.mother: [], Relation.son: [],
+                         Relation.daughter: [], Relation.husband: [], Relation.wife: []}
 
             for relative in self.__graph.neighbors(self):
                 if self.relation_with(relative) == Relation.son:
@@ -85,20 +92,26 @@ class Person:
                 elif self.relation_with(relative) == Relation.daughter:
                     relatives[Relation.daughter].append(relative)
                 elif self.relation_with(relative) == Relation.father:
-                    relatives[Relation.father] = relative
+                    relatives[Relation.father].append(relative)
                 elif self.relation_with(relative) == Relation.mother:
-                    relatives[Relation.mother] = relative
+                    relatives[Relation.mother].append(relative)
                 elif self.relation_with(relative) == Relation.husband:
-                    relatives[Relation.husband] = relative
+                    relatives[Relation.husband].append(relative)
                 elif self.relation_with(relative) == Relation.wife:
-                    relatives[Relation.wife] = relative
+                    relatives[Relation.wife].append(relative)
 
-                self.__relatives = relatives
-                self.__relatives_rebuild_reqd = False
+            if len(relatives[Relation.father])>1 or len(relatives[Relation.mother])>1:
+                raise Exception("Can't have multiple father or mother values")
+
+            self.__relatives = relatives
+            self.__relatives_rebuild_reqd = False
 
         return self.__relatives
 
     def _add_relation(self, to: Person, relation: Relation) -> None:
+        if self is to:
+            raise ValueError("Can't be related to self")
+
         self.__graph.add_edges_from([(self, to, {Relation: relation}), ])
         self.__relatives_rebuild_reqd = True
 
@@ -106,6 +119,10 @@ class Person:
         child_rel = Relation.son if child.__gender == 'm' else Relation.daughter
         parent_rel = Relation.father if self.__gender == 'm' else Relation.mother
 
+        # if len(child.__relatives[parent_rel])==1 and child.__relatives[parent_rel][0]!=self:
+        print(child.__relatives[parent_rel])
+        if len(child.__relatives[parent_rel])==1:
+            raise Exception("Can't have multiple father or mother values")
         self._add_relation(child, child_rel)
         child._add_relation(self, parent_rel)
 
