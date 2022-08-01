@@ -31,6 +31,10 @@ class Person:
         return self.__name
 
     @property
+    def gender(self) -> str:
+        return self.__gender
+
+    @property
     def parents(self) -> list[Person]:
         relatives = self._relatives()
         return [relatives[Relation.father], relatives[Relation.mother]]
@@ -136,7 +140,10 @@ class Lineage:
         return self.__counter
 
     def add_person(self, name: str, gender: str, father: Person = None, mother: Person = None) -> Person:
-        person = Person(self._graph, self.__new_id(), name, gender)
+        return self._add_person_with_id(self.__new_id(), name, gender, father, mother)
+
+    def _add_person_with_id(self, id: int, name: str, gender: str, father: Person = None, mother: Person = None) -> Person:
+        person = Person(self._graph, id, name, gender)
         self._graph.add_node(person)
 
         if father:
@@ -153,7 +160,7 @@ class Lineage:
         relations = []
         for relation in self._graph.edges:
             relations.append(
-                f'{relation[0]} --{self._graph.edges[relation[0],relation[1]][Relation].name}-> {relation[1]}')
+                [relation, self._graph.edges[relation[0], relation[1]][Relation].name])
         return relations
 
     def all_unique_relations(self) -> list:
@@ -165,8 +172,63 @@ class Lineage:
 
         for relation in rel_set:
             relations.append(
-                f'{relation[0]} --{self._graph.edges[relation[0],relation[1]][Relation].name}-> {relation[1]}')
+                [relation, self._graph.edges[relation[0], relation[1]][Relation].name])
         return relations
 
     def shortest_path(self, start, stop):
         return networkx.shortest_path(self._graph, start, stop)
+
+    def save_to_file(self, filename: str) -> None:
+        with open(filename, 'w') as f:
+            f.write('id,name,gender\n')
+            for person in self.all_persons():
+                f.write(f'{person.id},{person.name},{person.gender}\n')
+
+            f.write('='*30+'\n')
+            f.write('id1,id2,relation')
+            for relatives, relation in self.all_relations():
+                f.write(f'{relatives[0].id},{relatives[1].id},{relation}\n')
+
+    @classmethod
+    def load_from_file(cls, filename: str) -> Lineage:
+        lineage = cls()
+
+        with open(filename) as f:
+            persons_data, relations_data = f.read().split('='*30)
+
+            for id in persons_data.split('\n')[1:]:
+                try:
+                    id, name, gender = id.split(',')
+                    id = int(id)
+                    lineage._add_person_with_id(id, name, gender)
+                    lineage.__counter+=1
+                except Exception:
+                    pass
+
+            rel = {
+                'father': Relation.father,
+                'mother': Relation.mother,
+                'son': Relation.son,
+                'daughter': Relation.daughter,
+                'husband': Relation.husband,
+                'wife': Relation.wife,
+            }
+            persons_dict: dict[int, Person] = {}
+            for id in lineage.all_persons():
+                persons_dict[id.id] = id
+
+            for relation_tuple in relations_data.split('\n')[1:]:
+                try:
+                    id1, id2, relation = relation_tuple.split(',')
+                    id1, id2 = int(id1), int(id2)
+                    persons_dict[id1]._add_relation(
+                        persons_dict[id2], rel[relation])
+                except Exception:
+                    pass
+
+        return lineage
+
+    def find_person_by_id(self, id: int) -> Person:
+        for person in self.all_persons():
+            if person.id == id:
+                return person
