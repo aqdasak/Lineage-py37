@@ -115,6 +115,61 @@ def test_add_spouse():
     assert father_b.wife[0] == mother_b
 
 
+def test_add_multiple_father_error():
+    lineage, _, _, child = factory()
+    person = lineage.add_person('Person', 'm')
+
+    error = True
+    try:
+        # This must raise exception
+        child.add_parent(person)
+    except Exception:
+        error = False
+    if error:
+        raise Exception()
+
+
+def test_add_multiple_mother_error():
+    lineage, _, _, child = factory()
+    person = lineage.add_person('Person', 'f')
+
+    error = True
+    try:
+        # This must raise exception
+        child.add_parent(person)
+    except Exception:
+        error = False
+    if error:
+        raise Exception()
+
+
+def test_multiple_addition_to_father_not_allowed():
+    lineage, _, _, child = factory()
+    person = lineage.add_person('Person', 'm')
+
+    error = True
+    try:
+        # This must raise exception
+        person.add_child(child)
+    except Exception:
+        error = False
+    if error:
+        raise Exception()
+
+
+def test_multiple_addition_to_mother_not_allowed():
+    lineage, _, _, child = factory()
+    person = lineage.add_person('Person', 'f')
+
+    error = True
+    try:
+        # This must raise exception
+        person.add_child(child)
+    except Exception:
+        error = False
+    if error:
+        raise Exception()
+
 
 def test_same_gender_spouse_error():
     lineage, _, _, _ = factory()
@@ -137,6 +192,23 @@ def test_same_gender_spouse_error():
     if any(error):
         raise Exception()
 
+
+def test_unknown_gender_error():
+    lineage, _, _, _ = factory()
+
+    invalid_genders = list(string.ascii_lowercase)
+    invalid_genders.remove('m')
+    invalid_genders.remove('f')
+    error = [True]*len(invalid_genders)
+    # Following must raise exception
+    for i, gender in enumerate(invalid_genders):
+        try:
+            lineage.add_person('P', gender)
+        except Exception:
+            error[i] = False
+
+    if any(error):
+        raise Exception()
 
 
 def test_empty_relatives():
@@ -177,7 +249,7 @@ def test_no_self_loop():
 
 
 def test_shortest_path():
-    lineage, father, mother, child = factory()
+    lineage, father, mother, _ = factory()
     assert len(lineage.shortest_path(father, mother)) == 3
     father.add_spouse(mother)
     assert len(lineage.shortest_path(father, mother)) == 2
@@ -194,4 +266,27 @@ def test_save_and_load_file():
 
     filename = 'test_lineage.csv'
     lineage.save_to_file(filename)
-    print(lineage.load_from_file(filename))
+
+    new_lineage = Lineage.load_from_file(filename)
+    assert type(new_lineage) == Lineage
+    father_b = new_lineage.find_person_by_id(father.id)
+    mother_b = new_lineage.find_person_by_id(mother.id)
+    child_b = new_lineage.find_person_by_id(child.id)
+
+    assert father_b.id == father.id
+    assert mother_b.id == mother.id
+    assert child_b.id == child.id
+
+    assert father_b.name == father.name
+    assert mother_b.name == mother.name
+    assert child_b.name == child.name
+
+    assert father_b.children[0] == child_b
+    assert mother_b.children[0] == child_b
+    assert child_b.father == father_b
+    assert child_b.mother == mother_b
+    assert father_b.wife[0] == mother_b
+    assert mother_b.husband[0] == father_b
+
+    assert len(lineage.all_persons()) == len(new_lineage.all_persons())
+    assert len(lineage.all_relations()) == len(new_lineage.all_relations())
