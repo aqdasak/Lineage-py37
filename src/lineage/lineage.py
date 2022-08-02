@@ -1,17 +1,18 @@
 from __future__ import annotations
 from collections import defaultdict
+import json
 import networkx
 from networkx import DiGraph
-from enum import Enum
+from enum import Enum, auto
 
 
 class Relation(Enum):
-    father = 0
-    mother = 1
-    son = 2
-    daughter = 3
-    husband = 4
-    wife = 5
+    FATHER = auto()
+    MOTHER = auto()
+    SON = auto()
+    DAUGHTER = auto()
+    HUSBAND = auto()
+    WIFE = auto()
 
 
 class Person:
@@ -39,18 +40,18 @@ class Person:
     @property
     def parents(self) -> list[Person]:
         relatives = self._relatives_dict()
-        return [*relatives[Relation.father], *relatives[Relation.mother]]
+        return [*relatives[Relation.FATHER], *relatives[Relation.MOTHER]]
 
     @property
     def father(self) -> Person | None:
-        father_list = self._relatives_dict()[Relation.father]
+        father_list = self._relatives_dict()[Relation.FATHER]
         if father_list:
             return father_list[0]
         return None
 
     @property
     def mother(self) -> Person | None:
-        mother_list = self._relatives_dict()[Relation.mother]
+        mother_list = self._relatives_dict()[Relation.MOTHER]
         if mother_list:
             return mother_list[0]
         return None
@@ -58,23 +59,23 @@ class Person:
     @property
     def children(self) -> list[Person]:
         relatives = self._relatives_dict()
-        return [*relatives[Relation.son], *relatives[Relation.daughter]]
+        return [*relatives[Relation.SON], *relatives[Relation.DAUGHTER]]
 
     @property
     def sons(self) -> list[Person]:
-        return self._relatives_dict()[Relation.son]
+        return self._relatives_dict()[Relation.SON]
 
     @property
     def daughters(self) -> list[Person]:
-        return self._relatives_dict()[Relation.daughter]
+        return self._relatives_dict()[Relation.DAUGHTER]
 
     @property
     def husband(self) -> list[Person]:
-        return self._relatives_dict()[Relation.husband]
+        return self._relatives_dict()[Relation.HUSBAND]
 
     @property
     def wife(self) -> list[Person]:
-        return self._relatives_dict()[Relation.wife]
+        return self._relatives_dict()[Relation.WIFE]
 
     def relation_with(self, relative: Person) -> Relation | None:
         try:
@@ -82,11 +83,11 @@ class Person:
         except KeyError:
             return
 
-    def relatives(self) -> dict[str, list[Person]]:
+    def relatives(self) -> dict[Relation, list[Person]]:
         relatives = {}
         for relation, relative in self._relatives_dict().items():
             if relative:
-                relatives[relation.name] = relative
+                relatives[relation] = relative
         return relatives
 
     def _relatives_dict(self) -> dict[Relation, list[Person]]:
@@ -95,13 +96,23 @@ class Person:
     def _add_relation(self, to: Person, relation: Relation) -> None:
         if self is to:
             raise ValueError("Can't be related to self")
+        if self.relation_with(to) is not None:
+            raise ValueError('Relation is already present',
+                             self.relation_with(to))
 
         self.__graph.add_edges_from([(self, to, {Relation: relation}), ])
         self.__relatives_dict[relation].append(to)
 
+    @staticmethod
+    def __validate_is_Person_object(x):
+        if not isinstance(x, Person):
+            raise ValueError(f"{x} is not a 'Person' object")
+
     def add_child(self, child: Person) -> None:
-        child_rel = Relation.son if child.__gender == 'm' else Relation.daughter
-        parent_rel = Relation.father if self.__gender == 'm' else Relation.mother
+        self.__validate_is_Person_object(child)
+
+        child_rel = Relation.SON if child.__gender == 'm' else Relation.DAUGHTER
+        parent_rel = Relation.FATHER if self.__gender == 'm' else Relation.MOTHER
 
         # if len(child.__relatives[parent_rel])>=1:
         if len(child.__relatives_dict[parent_rel]) >= 1:
@@ -113,6 +124,8 @@ class Person:
         parent.add_child(self)
 
     def add_spouse(self, other: Person) -> None:
+        self.__validate_is_Person_object(other)
+
         if {self.__gender, other.__gender} != {'m', 'f'}:
             raise ValueError
 
@@ -123,8 +136,8 @@ class Person:
             husband = other
             wife = self
 
-        husband._add_relation(wife, Relation.wife)
-        wife._add_relation(husband, Relation.husband)
+        husband._add_relation(wife, Relation.WIFE)
+        wife._add_relation(husband, Relation.HUSBAND)
 
     def __repr__(self) -> str:
         return f'P{self.id}({self.name.split(" ")[0]})'
@@ -153,22 +166,27 @@ class Lineage:
 
         return person
 
+    def find_person_by_id(self, id: int) -> Person:
+        for person in self.all_persons():
+            if person.id == id:
+                return person
+
     def all_persons(self):
         return self._graph.nodes
 
-    def all_relations(self) -> list[(Person, Person, str)]:
+    def all_relations(self) -> list[(Person, Person, Relation)]:
         relations = []
         for p1, p2, relation in self._graph.edges.data():
-            relations.append((p1, p2, relation[Relation].name))
+            relations.append((p1, p2, relation[Relation]))
         return relations
 
-    def all_unique_relations(self) -> list[(Person, Person, str)]:
+    def all_unique_relations(self) -> list[(Person, Person, Relation)]:
         relations = []
         rel_set = []
         for p1, p2, relation in self._graph.edges.data():
             if (p1, p2) not in rel_set and (p2, p1) not in rel_set:
                 rel_set.append((p1, p2))
-                relations.append((p1, p2, relation[Relation].name))
+                relations.append((p1, p2, relation[Relation]))
 
         return relations
 
@@ -176,56 +194,50 @@ class Lineage:
         return networkx.shortest_path(self._graph, start, stop)
 
     def save_to_file(self, filename: str) -> None:
-        with open(filename, 'w') as f:
-            f.write('id,name,gender\n')
-            for person in self.all_persons():
-                f.write(f'{person.id},{person.name},{person.gender}\n')
+        data = {
+            'headers': {
+                'persons': ['id', 'name', 'gender'],
+                'relations': ['id1', 'id2', 'relation']
+            },
+            'persons': [],
+            'relations': []
+        }
 
-            f.write('='*30+'\n')
-            f.write('id1,id2,relation\n')
-            for p1, p2, relation in self.all_relations():
-                f.write(f'{p1.id},{p2.id},{relation}\n')
+        for person in self.all_persons():
+            data['persons'].append([person.id, person.name, person.gender])
+
+        for p1, p2, relation in self.all_relations():
+            data['relations'].append([p1.id, p2.id, relation.name])
+
+        with open(filename, 'w') as f:
+            json.dump(data, f, indent=4)
 
     @classmethod
     def load_from_file(cls, filename: str) -> Lineage:
         lineage = cls()
 
         with open(filename) as f:
-            persons_data, relations_data = f.read().split('='*30)
+            data = json.load(f)
+            persons_data = data['persons']
+            relations_data = data['relations']
 
-            for id in persons_data.split('\n')[1:]:
+            persons_dict: dict[int, Person] = {}
+            for id, name, gender in persons_data:
                 try:
-                    id, name, gender = id.split(',')
-                    id = int(id)
-                    lineage._add_person_with_id(id, name, gender)
+                    person = lineage._add_person_with_id(int(id), name, gender)
                     lineage.__counter += 1
+
+                    persons_dict[person.id] = person
                 except Exception:
                     pass
 
-            rel = {
-                'father': Relation.father,
-                'mother': Relation.mother,
-                'son': Relation.son,
-                'daughter': Relation.daughter,
-                'husband': Relation.husband,
-                'wife': Relation.wife,
-            }
-            persons_dict: dict[int, Person] = {}
-            for id in lineage.all_persons():
-                persons_dict[id.id] = id
-
-            for relation_tuple in relations_data.split('\n')[1:]:
+            for id1, id2, relation in relations_data:
                 try:
-                    id1, id2, relation = relation_tuple.split(',')
                     id1, id2 = int(id1), int(id2)
                     persons_dict[id1]._add_relation(
-                        persons_dict[id2], rel[relation])
+                        persons_dict[id2], Relation[relation])
+
                 except Exception:
                     pass
 
         return lineage
-
-    def find_person_by_id(self, id: int) -> Person:
-        for person in self.all_persons():
-            if person.id == id:
-                return person
