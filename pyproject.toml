@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Lineage"
-version = "0.2.0"
+version = "0.3.0"
 description = ""
 authors = ["Aqdas <aqdasak@gmail.com>"]
 
@@ -8,9 +8,11 @@ authors = ["Aqdas <aqdasak@gmail.com>"]
 python = "^3.9"
 networkx = "^2.8.5"
 matplotlib = "^3.5.2"
+colorama = "^0.4.5"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
+autopep8 = "^1.6.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

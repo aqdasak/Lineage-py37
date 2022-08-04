@@ -1,6 +1,7 @@
 from __future__ import annotations
 from collections import defaultdict
 import json
+from pathlib import Path
 import networkx
 from networkx import DiGraph
 from enum import Enum, auto
@@ -14,11 +15,14 @@ class Relation(Enum):
     HUSBAND = auto()
     WIFE = auto()
 
+    def __repr__(self) -> str:
+        return str(self)
+
 
 class Person:
     def __init__(self, digraph: DiGraph, id: int, name: str, gender: str) -> None:
         if gender not in ('m', 'f'):
-            raise ValueError('Gender should be either male(m) or f)')
+            raise ValueError('Gender should be either male(m) or female(f)')
         self.__graph = digraph
         self.__id = id
         self.__name = name
@@ -103,6 +107,18 @@ class Person:
         self.__graph.add_edges_from([(self, to, {Relation: relation}), ])
         self.__relatives_dict[relation].append(to)
 
+    def remove_relative(self, relative: Person) -> None:
+        def remove_from_one_side(person1: Person, person2: Person):
+            relation: Relation = person1.relation_with(person2)
+            if relation is not None:
+                person1.__relatives_dict[relation].remove(person2)
+                person1.__graph.remove_edge(person1, person2)
+            else:
+                raise Exception('Relation not present')
+
+        remove_from_one_side(self, relative)
+        remove_from_one_side(relative, self)
+
     @staticmethod
     def __validate_is_Person_object(x):
         if not isinstance(x, Person):
@@ -155,6 +171,7 @@ class Lineage:
     def add_person(self, name: str, gender: str, father: Person = None, mother: Person = None) -> Person:
         return self._add_person_with_id(self.__new_id(), name, gender, father, mother)
 
+    # TODO Add id in graph node and person in node's attribute for faster search by id
     def _add_person_with_id(self, id: int, name: str, gender: str, father: Person = None, mother: Person = None) -> Person:
         person = Person(self._graph, id, name, gender)
         self._graph.add_node(person)
@@ -166,13 +183,21 @@ class Lineage:
 
         return person
 
-    def find_person_by_id(self, id: int) -> Person:
+    def find_person_by_id(self, id: int) -> Person | None:
         for person in self.all_persons():
             if person.id == id:
                 return person
 
-    def all_persons(self):
-        return self._graph.nodes
+    def find_person_by_name(self, name: str) -> list[Person]:
+        name = name.lower()
+        found = []
+        for person in self.all_persons():
+            if name in person.name.lower():
+                found.append(person)
+        return found
+
+    def all_persons(self) -> list[Person]:
+        return list(self._graph.nodes)
 
     def all_relations(self) -> list[(Person, Person, Relation)]:
         relations = []
@@ -193,7 +218,7 @@ class Lineage:
     def shortest_path(self, start, stop):
         return networkx.shortest_path(self._graph, start, stop)
 
-    def save_to_file(self, filename: str) -> None:
+    def save_to_file(self, filename: Path | str) -> None:
         data = {
             'headers': {
                 'persons': ['id', 'name', 'gender'],
@@ -213,7 +238,7 @@ class Lineage:
             json.dump(data, f, indent=4)
 
     @classmethod
-    def load_from_file(cls, filename: str) -> Lineage:
+    def load_from_file(cls, filename: Path | str) -> Lineage:
         lineage = cls()
 
         with open(filename) as f:

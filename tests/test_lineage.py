@@ -1,10 +1,6 @@
 import string
-from src.lineage import __version__, Lineage
+from src.lineage import Lineage
 from src.lineage.lineage import Person, Relation
-
-
-def test_version():
-    assert __version__ == '0.2.0'
 
 
 def factory():
@@ -31,9 +27,6 @@ def test_relation():
     assert len(mother.children) == 1
     assert len(father.parents) == 0
     assert len(child.children) == 0
-
-    # print(l.all_persons())
-    # print(l.all_relations())
 
 
 def test_relatives():
@@ -130,6 +123,44 @@ def test_add_spouse():
     assert father_b.wife[0] == mother_b
 
 
+def test_remove_relative():
+    lineage, father, mother, child = factory()
+    assert father.relation_with(child) is not None
+    assert mother.relation_with(child) is not None
+    assert child.relation_with(father) is not None
+    assert child.relation_with(mother) is not None
+
+    father.remove_relative(child)
+    child.remove_relative(mother)
+
+    assert father.relation_with(child) is None
+    assert mother.relation_with(child) is None
+    assert child.relation_with(father) is None
+    assert child.relation_with(mother) is None
+
+    for person, relative in ((father, child), (mother, child), (child, father), (child, mother)):
+        for _, relatives_list in person.relatives().items():
+            assert child not in relatives_list
+
+    # Removing relation which is not present
+    error_raised = False
+    try:
+        # This must raise exception
+        father.remove_relative(mother)
+    except Exception:
+        error_raised = True
+
+    assert error_raised
+
+
+def test_remove_and_add_relative():
+    _, father, _, child = factory()
+    father.remove_relative(child)
+    father.add_child(child)
+    assert father.children[0] == child
+    assert child.father == father
+
+
 def test_multiple_additions():
     _, father, mother, _ = factory()
     father.add_spouse(mother)
@@ -144,7 +175,7 @@ def test_multiple_additions():
     assert error_raised
 
 
-def test_change_relation():
+def test_change_relation_not_allowed():
     _, father, mother, _ = factory()
     father.add_spouse(mother)
 
@@ -291,7 +322,7 @@ def test_save_and_load_file():
     lineage, father, mother, child = factory()
     father.add_spouse(mother)
 
-    filename = 'test_lineage.csv'
+    filename = 'test_lineage.json'
     lineage.save_to_file(filename)
 
     new_lineage = Lineage.load_from_file(filename)
@@ -328,3 +359,21 @@ def test_save_and_load_file():
 
     assert len(lineage.all_persons()) == len(new_lineage.all_persons())
     assert len(lineage.all_relations()) == len(new_lineage.all_relations())
+    
+    from os import remove
+    remove(filename)
+
+
+def test_find_by_id():
+    lineage, father, mother, child = factory()
+    assert lineage.find_person_by_id(father.id) == father
+    assert lineage.find_person_by_id(mother.id) == mother
+    assert lineage.find_person_by_id(child.id) == child
+
+
+def test_find_by_name():
+    lineage, father, mother, child = factory()
+    assert lineage.find_person_by_name('fAth')[0] == father
+    assert lineage.find_person_by_name('AthEr')[0] == father
+    assert lineage.find_person_by_name('oTheR')[0] == mother
+    assert lineage.find_person_by_name('ild')[0] == child
