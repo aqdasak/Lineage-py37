@@ -33,7 +33,7 @@ def test_relatives():
     _, father, mother, child = factory()
 
     for person in father, mother, child:
-        for relation, relatives in person._relatives_dict().items():
+        for relation, relatives in person.relatives_dict().items():
             assert type(relation) == Relation
             assert type(relatives) == list
             assert type(relatives[0]) == Person
@@ -139,7 +139,7 @@ def test_remove_relative():
     assert child.relation_with(mother) is None
 
     for person, relative in ((father, child), (mother, child), (child, father), (child, mother)):
-        for _, relatives_list in person.relatives().items():
+        for _, relatives_list in person.relatives_dict().items():
             assert child not in relatives_list
 
     # Removing relation which is not present

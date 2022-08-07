@@ -3,7 +3,9 @@ from datetime import datetime
 from pathlib import Path
 from lineage import Lineage
 from lineage.lineage import Person
-from my_io import clear_terminal, input_from, non_empty_input, print_cyan, print_green, print_grey, print_heading, print_yellow, print_red, take_input
+from my_io import clear_terminal, input_from, input_in_range, non_empty_input, print_cyan, print_green, print_grey, print_heading, print_yellow, print_red, take_input
+
+lineage_modified = False
 
 
 def add_new_person(lineage: Lineage):
@@ -11,8 +13,9 @@ def add_new_person(lineage: Lineage):
         try:
             if id:
                 return lineage.find_person_by_id(int(id))
-        except Exception:
+        except Exception as e:
             print_red('Error in ID', id)
+            print_red(e)
 
     print_heading('ADD NEW PERSON')
     name = non_empty_input('Input name: ')
@@ -26,6 +29,9 @@ def add_new_person(lineage: Lineage):
     print_yellow('Person added successfully')
     _print_person_details(lineage, person)
 
+    global lineage_modified
+    lineage_modified = True
+
 
 def add_parent(lineage: Lineage):
     print_heading('ADD PARENT')
@@ -34,6 +40,9 @@ def add_parent(lineage: Lineage):
     parent = lineage.find_person_by_id(
         int(non_empty_input('Enter ID of parent: ')))
     person.add_parent(parent)
+
+    global lineage_modified
+    lineage_modified = True
 
 
 def add_child(lineage: Lineage):
@@ -44,6 +53,9 @@ def add_child(lineage: Lineage):
         int(non_empty_input('Enter ID of child: ')))
     person.add_child(child)
 
+    global lineage_modified
+    lineage_modified = True
+
 
 def add_spouse(lineage: Lineage):
     print_heading('ADD SPOUSE')
@@ -53,11 +65,19 @@ def add_spouse(lineage: Lineage):
         int(non_empty_input('Enter ID II of person: ')))
     person1.add_spouse(person2)
 
-def remove_person(lineage:Lineage):
+    global lineage_modified
+    lineage_modified = True
+
+
+def remove_person(lineage: Lineage):
     print_heading('REMOVE PERSON')
     person = lineage.find_person_by_id(
         int(non_empty_input('Enter ID of the person: ')))
     lineage.remove_person(person)
+    print_cyan('Person removed')
+
+    global lineage_modified
+    lineage_modified = True
 
 
 def remove_relation(lineage: Lineage):
@@ -67,6 +87,10 @@ def remove_relation(lineage: Lineage):
     relative = lineage.find_person_by_id(
         int(non_empty_input('Enter ID II of person: ')))
     person.remove_relative(relative)
+    print_cyan('Relation removed')
+
+    global lineage_modified
+    lineage_modified = True
 
 
 def _print_person_details(lineage: Lineage, person: Person):
@@ -93,9 +117,7 @@ def _print_person_details(lineage: Lineage, person: Person):
         print_cyan('Wife:\t  ', wife)
 
 
-def find_by_id(lineage: Lineage):
-    print_heading('FIND BY ID')
-    id = int(non_empty_input('Enter ID to search: '))
+def _find_by_id(lineage: Lineage, id: int):
     person = lineage.find_person_by_id(id)
     if person:
         _print_person_details(lineage, person)
@@ -103,12 +125,19 @@ def find_by_id(lineage: Lineage):
         print_red('ID not found')
 
 
-def find_by_name(lineage: Lineage):
-    print_heading('FIND BY NAME')
-    name = non_empty_input('Enter name to search: ')
+def _find_by_name(lineage: Lineage, name: str):
     for person in lineage.find_person_by_name(name):
-        print_grey(' - '*16)
+        print_grey(' - '*17)
         _print_person_details(lineage, person)
+
+
+def find(lineage: Lineage):
+    print_heading('FIND PERSON')
+    id_or_name = non_empty_input('Enter name or ID to search: ')
+    if id_or_name.isdigit():
+        _find_by_id(lineage, int(id_or_name))
+    else:
+        _find_by_name(lineage, id_or_name)
 
 
 def all_persons(lineage: Lineage):
@@ -121,22 +150,47 @@ def all_relations(lineage: Lineage):
     print_cyan(lineage.all_relations())
 
 
-def save_to_file(lineage: Lineage) -> bool:
+def initialize_save_directories():
     path = Path().home()/'.lineage'
     if not path.exists():
         path.mkdir()
 
-    filename = path / \
-        f'lineage {datetime.now().strftime("%Y-%m-%d %H.%M.%S")}.json'
+    path = path/'autosave'
+    if not path.exists():
+        path.mkdir()
 
+
+def save_to_file(lineage: Lineage):
+    global lineage_modified
+    if not lineage_modified:
+        print_red('No change since last save')
+        return
+
+    filename = Path().home() / \
+        f'.lineage/lineage {datetime.now().strftime("%Y-%m-%d %H.%M.%S")}.json'
     try:
         lineage.save_to_file(filename)
         print_green('Saved successfully at', filename)
-        return True
+
+        lineage_modified = False
+
     except Exception as e:
         print_red('Some error occured while saving file')
-        print_red(e)
-        return False
+
+
+def autosave(lineage: Lineage):
+    global lineage_modified
+    if not lineage_modified:
+        return
+
+    filename = Path().home() / \
+        f'.lineage/autosave/autosave-lineage {datetime.now().strftime("%Y-%m-%d %H.%M.%S")}.json'
+    try:
+        lineage.save_to_file(filename)
+
+        lineage_modified = False
+    except Exception:
+        pass
 
 
 def load_from_file() -> Lineage | None:
@@ -146,6 +200,7 @@ def load_from_file() -> Lineage | None:
         return
 
     files = list(path.glob('*.json'))
+    files.sort(reverse=True)
 
     if len(files) == 0:
         print_red('No csv file found in', path)
@@ -159,18 +214,23 @@ def load_from_file() -> Lineage | None:
             print_cyan(f'{i}: {file.name}')
             i += 1
 
-        inp = int(non_empty_input('Select the file to load: '))
+        inp = int(input_in_range('Select the file to load: ', 1, len(files)+1))
 
     return Lineage.load_from_file(files[inp-1])
 
 
-def save_and_exit(lineage: Lineage):
-    if save_to_file(lineage):
+def safe_exit(lineage: Lineage):
+    global lineage_modified
+    if not lineage_modified:
         print_yellow('Exiting...')
         exit()
-    inp = non_empty_input('Do you really want to exit (y/n): ').lower()
+
+    inp = non_empty_input(
+        'You have unsaved data. Do you really want to exit without saving (y/n): ')
     if inp in ('y', 'yes'):
+        autosave(lineage)
         exit()
+
     print_red('Exit aborted')
 
 
@@ -194,15 +254,14 @@ def show_help(_):
         addp:\t\tAdd parent of a person
         addc:\t\tAdd child of a person
         adds:\t\tAdd spouse of a person
-        show:\t\tFind person by id
-        showbyname:\tFind person by name
+        show:\t\tFind and show matching person
         showall:\tShow all persons in lineage
         showallrel:\tShow all relations in lineage
         sp:\t\tShortest path between two persons
         rmrel:\t\tRemove relation between two persons
         rmperson:\tRemove person from lineage
         save:\t\tSave lineage to file
-        exit:\t\tSave lineage and exit
+        exit:\t\tExit the lineage prompt
         help:\t\tShow this help
         """
                  )
@@ -212,8 +271,8 @@ def main():
     print_heading('LINEAGE')
     lineage = None
 
-    inp = non_empty_input(
-        'Do you want to load lineage from file (y/n)? ').lower()
+    inp = input_from(
+        'Do you want to load lineage from file (y/n)? ', ('y', 'n', 'yes', 'no')).lower()
     if inp in ('y', 'yes'):
         lineage = load_from_file()
 
@@ -226,15 +285,14 @@ def main():
         'addp': add_parent,
         'addc': add_child,
         'adds': add_spouse,
-        'rmperson':remove_person,
+        'rmperson': remove_person,
         'rmrel': remove_relation,
         'save': save_to_file,
-        'show': find_by_id,
-        'showbyname': find_by_name,
+        'show': find,
         'showall': all_persons,
         'showallrel': all_relations,
         'sp': shortest_path,
-        'exit': save_and_exit,
+        'exit': safe_exit,
         'help': show_help,
     }
 
@@ -243,21 +301,23 @@ def main():
 
     show_help(None)
 
-    try: 
-        while True:
-            try:
-                commands.get(non_empty_input('# ').lower(), wrong_input)(lineage)
-            except Exception as e:
-                # print_warning('Something went wrong')
-                print_red(e)
+    while True:
+        try:
+            commands.get(non_empty_input('# ').lower(),
+                         wrong_input)(lineage)
 
-            print_grey('_'*50)
+        except KeyboardInterrupt:
+            print_red('\nAborted')
+            autosave(lineage)
+            exit()
 
-    except KeyboardInterrupt:
-        print_red('\nAborted')
-        save_and_exit(lineage)
+        except Exception as e:
+            print_red(e)
+
+        print_grey('_'*50)
 
 
 if __name__ == '__main__':
     clear_terminal()
+    initialize_save_directories()
     main()

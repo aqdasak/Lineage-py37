@@ -22,12 +22,46 @@ def non_empty_input(arg):
             return inp
 
 
-def input_from(msg,from_:tuple):
+def input_from(msg, from_: tuple, *, IGNORE_CASE=True):
+    from2 = from_
+    if IGNORE_CASE:
+        from2 = [i.lower() for i in from_]
+
+        while True:
+            inp = non_empty_input(msg).lower()
+            if inp in from2:
+                return inp
+            print_red(f'Warning: Input from {from_}')
+
+    else:
+        while True:
+            inp = non_empty_input(msg)
+            if inp in from2:
+                return inp
+            print_red(f'Warning: Input from {from_}')
+
+
+def input_in_range(msg: str, a: int, b: int = None) -> float:
+    if b is not None:
+        if b <= a:
+            raise ValueError('Upper bound should be greater than lower bound')
+        lb = a
+        ub = b
+    else:
+        if a <= 0:
+            raise ValueError('Upper bound should be greater than 0')
+        lb = 0
+        ub = a
+
     while True:
-        inp=non_empty_input(msg)
-        if inp in from_:
-            return inp
-        print_red(f'Warning: Input from {from_}')
+        inp = non_empty_input(msg)
+        try:
+            inp = float(inp)
+            if lb <= inp < ub:
+                return inp
+            print_red(f'Warning: Input range is [{lb},{ub})')
+        except Exception:
+            print_red(f'Warning: Please input a number')
 
 
 def print_yellow(*args):

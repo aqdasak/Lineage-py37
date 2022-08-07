@@ -43,43 +43,43 @@ class Person:
 
     @property
     def parents(self) -> list[Person]:
-        relatives = self._relatives_dict()
+        relatives = self.relatives_dict()
         return [*relatives[Relation.FATHER], *relatives[Relation.MOTHER]]
 
     @property
     def father(self) -> Person | None:
-        father_list = self._relatives_dict()[Relation.FATHER]
+        father_list = self.relatives_dict()[Relation.FATHER]
         if father_list:
             return father_list[0]
         return None
 
     @property
     def mother(self) -> Person | None:
-        mother_list = self._relatives_dict()[Relation.MOTHER]
+        mother_list = self.relatives_dict()[Relation.MOTHER]
         if mother_list:
             return mother_list[0]
         return None
 
     @property
     def children(self) -> list[Person]:
-        relatives = self._relatives_dict()
+        relatives = self.relatives_dict()
         return [*relatives[Relation.SON], *relatives[Relation.DAUGHTER]]
 
     @property
     def sons(self) -> list[Person]:
-        return self._relatives_dict()[Relation.SON]
+        return self.relatives_dict()[Relation.SON]
 
     @property
     def daughters(self) -> list[Person]:
-        return self._relatives_dict()[Relation.DAUGHTER]
+        return self.relatives_dict()[Relation.DAUGHTER]
 
     @property
     def husband(self) -> list[Person]:
-        return self._relatives_dict()[Relation.HUSBAND]
+        return self.relatives_dict()[Relation.HUSBAND]
 
     @property
     def wife(self) -> list[Person]:
-        return self._relatives_dict()[Relation.WIFE]
+        return self.relatives_dict()[Relation.WIFE]
 
     def relation_with(self, relative: Person) -> Relation | None:
         try:
@@ -87,17 +87,10 @@ class Person:
         except KeyError:
             return
 
-    def relatives(self) -> dict[Relation, list[Person]]:
-        relatives = {}
-        for relation, relative in self._relatives_dict().items():
-            if relative:
-                relatives[relation] = relative
-        return relatives
-
-    def _relatives_dict(self) -> dict[Relation, list[Person]]:
+    def relatives_dict(self) -> dict[Relation, list[Person]]:
         return self.__relatives_dict
 
-    def _add_relation(self, to: Person, relation: Relation) -> None:
+    def __add_relation(self, to: Person, relation: Relation) -> None:
         if self is to:
             raise ValueError("Can't be related to self")
         if self.relation_with(to) is not None:
@@ -121,7 +114,7 @@ class Person:
 
     def self_remove(self):
         person = self
-        for _, relatives in person._relatives_dict().items():
+        for _, relatives in person.relatives_dict().items():
             for relative in relatives:
                 relative.__relatives_dict[relative.relation_with(
                     person)].remove(person)
@@ -141,8 +134,8 @@ class Person:
         # if len(child.__relatives[parent_rel])>=1:
         if len(child.__relatives_dict[parent_rel]) >= 1:
             raise Exception("Can't have multiple father or mother values")
-        self._add_relation(child, child_rel)
-        child._add_relation(self, parent_rel)
+        self.__add_relation(child, child_rel)
+        child.__add_relation(self, parent_rel)
 
     def add_parent(self, parent: Person) -> None:
         parent.add_child(self)
@@ -160,11 +153,12 @@ class Person:
             husband = other
             wife = self
 
-        husband._add_relation(wife, Relation.WIFE)
-        wife._add_relation(husband, Relation.HUSBAND)
+        husband.__add_relation(wife, Relation.WIFE)
+        wife.__add_relation(husband, Relation.HUSBAND)
 
     def __repr__(self) -> str:
-        return f'P{self.id}({self.name.split(" ")[0]})'
+        # return f'P{self.id}({self.name.split(" ")[0]})'
+        return f'P{self.id}({self.name})'
 
 
 class Lineage:
@@ -270,7 +264,7 @@ class Lineage:
             for id1, id2, relation in relations_data:
                 try:
                     id1, id2 = int(id1), int(id2)
-                    persons_dict[id1]._add_relation(
+                    persons_dict[id1]._Person__add_relation(
                         persons_dict[id2], Relation[relation])
 
                 except Exception:
