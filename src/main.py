@@ -53,6 +53,12 @@ def add_spouse(lineage: Lineage):
         int(non_empty_input('Enter ID II of person: ')))
     person1.add_spouse(person2)
 
+def remove_person(lineage:Lineage):
+    print_heading('REMOVE PERSON')
+    person = lineage.find_person_by_id(
+        int(non_empty_input('Enter ID of the person: ')))
+    lineage.remove_person(person)
+
 
 def remove_relation(lineage: Lineage):
     print_heading('REMOVE RELATION')
@@ -194,6 +200,7 @@ def show_help(_):
         showallrel:\tShow all relations in lineage
         sp:\t\tShortest path between two persons
         rmrel:\t\tRemove relation between two persons
+        rmperson:\tRemove person from lineage
         save:\t\tSave lineage to file
         exit:\t\tSave lineage and exit
         help:\t\tShow this help
@@ -219,6 +226,7 @@ def main():
         'addp': add_parent,
         'addc': add_child,
         'adds': add_spouse,
+        'rmperson':remove_person,
         'rmrel': remove_relation,
         'save': save_to_file,
         'show': find_by_id,

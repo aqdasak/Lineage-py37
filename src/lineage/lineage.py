@@ -119,6 +119,14 @@ class Person:
         remove_from_one_side(self, relative)
         remove_from_one_side(relative, self)
 
+    def self_remove(self):
+        person = self
+        for _, relatives in person._relatives_dict().items():
+            for relative in relatives:
+                relative.__relatives_dict[relative.relation_with(
+                    person)].remove(person)
+        person.__graph.remove_node(person)
+
     @staticmethod
     def __validate_is_Person_object(x):
         if not isinstance(x, Person):
@@ -182,6 +190,9 @@ class Lineage:
             person.add_parent(mother)
 
         return person
+
+    def remove_person(self, person: Person) -> None:
+        person.self_remove()
 
     def find_person_by_id(self, id: int) -> Person | None:
         for person in self.all_persons():
