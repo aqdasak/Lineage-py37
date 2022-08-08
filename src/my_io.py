@@ -64,24 +64,28 @@ def input_in_range(msg: str, a: int, b: int = None) -> float:
             print_red(f'Warning: Please input a number')
 
 
-def print_yellow(*args):
-    print(c.LIGHTYELLOW_EX + arg_parse(*args) + c.RESET)
+def print_red(*args, end='\n'):
+    print(c.LIGHTRED_EX + arg_parse(*args) + c.RESET, end=end)
 
 
-def print_red(*args):
-    print(c.LIGHTRED_EX + arg_parse(*args) + c.RESET)
+def print_green(*args, end='\n'):
+    print(c.LIGHTGREEN_EX + arg_parse(*args) + c.RESET, end=end)
 
 
-def print_cyan(*args):
-    print(c.LIGHTCYAN_EX + arg_parse(*args) + c.RESET)
+def print_blue(*args, end='\n'):
+    print(c.LIGHTBLUE_EX + arg_parse(*args) + c.RESET, end=end)
 
 
-def print_green(*args):
-    print(c.LIGHTGREEN_EX + arg_parse(*args) + c.RESET)
+def print_yellow(*args, end='\n'):
+    print(c.LIGHTYELLOW_EX + arg_parse(*args) + c.RESET, end=end)
 
 
-def print_grey(*args):
-    print(c.LIGHTBLACK_EX + arg_parse(*args) + c.RESET)
+def print_cyan(*args, end='\n'):
+    print(c.LIGHTCYAN_EX + arg_parse(*args) + c.RESET, end=end)
+
+
+def print_grey(*args, end='\n'):
+    print(c.LIGHTBLACK_EX + arg_parse(*args) + c.RESET, end=end)
 
 
 def print_heading(*args):
@@ -91,7 +95,3 @@ def print_heading(*args):
     print(st)
     print('-'*len(st), end='')
     print(c.RESET + Style.NORMAL)
-
-
-def clear_terminal():
-    os.system('cls' if os.name == 'nt' else 'clear')

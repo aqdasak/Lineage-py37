@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from lineage import Lineage
 from lineage.lineage import Person
-from my_io import clear_terminal, input_from, input_in_range, non_empty_input, print_cyan, print_green, print_grey, print_heading, print_yellow, print_red, take_input
+from my_io import input_from, input_in_range, non_empty_input, print_blue, print_cyan, print_green, print_grey, print_heading, print_yellow, print_red, take_input
 
 lineage_modified = False
 
@@ -20,14 +20,22 @@ def add_new_person(lineage: Lineage):
     print_heading('ADD NEW PERSON')
     name = non_empty_input('Input name: ')
     gender = input_from('Input gender (m/f): ', ('m', 'f'))
-    father = get_person_by_id(take_input(
-        'Input ID of father or leave blank: '))
-    mother = get_person_by_id(take_input(
-        'Input ID of mother or leave blank: '))
+    parent1 = get_person_by_id(take_input(
+        'Input ID of parent1 or leave blank: '))
+    parent2 = get_person_by_id(take_input(
+        'Input ID of parent2 or leave blank: '))
 
-    person = lineage.add_person(name, gender, father, mother)
-    print_yellow('Person added successfully')
-    _print_person_details(lineage, person)
+    person = lineage.add_person(name, gender)
+    try:
+        if parent1:
+            person.add_parent(parent1)
+        if parent2:
+            person.add_parent(parent2)
+        print_yellow('Person added successfully')
+    except ValueError as e:
+        print_red('Parent2 not added')
+        print_red(e)
+    _print_person_details(person)
 
     global lineage_modified
     lineage_modified = True
@@ -40,6 +48,7 @@ def add_parent(lineage: Lineage):
     parent = lineage.find_person_by_id(
         int(non_empty_input('Enter ID of parent: ')))
     person.add_parent(parent)
+    _print_person_details(person)
 
     global lineage_modified
     lineage_modified = True
@@ -52,6 +61,7 @@ def add_child(lineage: Lineage):
     child = lineage.find_person_by_id(
         int(non_empty_input('Enter ID of child: ')))
     person.add_child(child)
+    _print_person_details(person)
 
     global lineage_modified
     lineage_modified = True
@@ -63,18 +73,34 @@ def add_spouse(lineage: Lineage):
         int(non_empty_input('Enter ID I of person: ')))
     person2 = lineage.find_person_by_id(
         int(non_empty_input('Enter ID II of person: ')))
-    person1.add_spouse(person2)
+    try:
+        person1.add_spouse(person2)
+        print_yellow('Added successfully')
+        _print_person_details(person1)
+    except Exception as e:
+        print_red('Something went wrong')
+        print_red(e)
 
     global lineage_modified
     lineage_modified = True
 
 
 def remove_person(lineage: Lineage):
+    def is_any_relative_present(person) -> bool:
+        for _, relatives in person.relatives_dict().items():
+            if len(relatives) > 0:
+                return True
+        return False
+
     print_heading('REMOVE PERSON')
     person = lineage.find_person_by_id(
         int(non_empty_input('Enter ID of the person: ')))
-    lineage.remove_person(person)
-    print_cyan('Person removed')
+
+    if is_any_relative_present(person):
+        print_red('Relative(s) are present. First remove relations.')
+    else:
+        lineage.remove_person(person)
+        print_cyan('Person removed')
 
     global lineage_modified
     lineage_modified = True
@@ -88,14 +114,30 @@ def remove_relation(lineage: Lineage):
         int(non_empty_input('Enter ID II of person: ')))
     person.remove_relative(relative)
     print_cyan('Relation removed')
+    _print_person_details(person)
 
     global lineage_modified
     lineage_modified = True
 
 
-def _print_person_details(lineage: Lineage, person: Person):
-    print_cyan('ID:\t', person.id)
-    print_cyan('Name:\t', person.name)
+def _print_person_details(person: Person):
+    def print_person(person: Person | list[Person], end='\n'):
+        if isinstance(person, list):
+            last = len(person)-1
+            for i, p in enumerate(person):
+                if i < last:
+                    print_person(p, end=', ')
+                else:
+                    print_person(p)
+        else:
+            print_cyan(f'P{person.id}({person.name})', end=end)
+
+    print_blue('ID:\t', end=' ')
+    print_cyan(person.id)
+
+    print_blue('Name:\t', end=' ')
+    print_cyan(person.name)
+
     father = person.father
     mother = person.mother
     sons = person.sons
@@ -104,23 +146,29 @@ def _print_person_details(lineage: Lineage, person: Person):
     wife = person.wife
 
     if father:
-        print_cyan('Father:\t', father)
+        print_blue('Father:\t', end=' ')
+        print_person(father)
     if mother:
-        print_cyan('Mother:\t', mother)
-    if sons:
-        print_cyan('Son:\t', sons)
-    if daughters:
-        print_cyan('Daughter:\t', daughters)
+        print_blue('Mother:\t', end=' ')
+        print_person(mother)
     if husband:
-        print_cyan('Husband:\t', husband)
+        print_blue('Husband:', end=' ')
+        print_person(husband)
     if wife:
-        print_cyan('Wife:\t  ', wife)
+        print_blue('Wife:\t', end=' ')
+        print_person(wife)
+    if sons:
+        print_blue('Son:\t', end=' ')
+        print_person(sons)
+    if daughters:
+        print_blue('Daughter:', end='')
+        print_person(daughters)
 
 
 def _find_by_id(lineage: Lineage, id: int):
     person = lineage.find_person_by_id(id)
     if person:
-        _print_person_details(lineage, person)
+        _print_person_details(person)
     else:
         print_red('ID not found')
 
@@ -128,7 +176,7 @@ def _find_by_id(lineage: Lineage, id: int):
 def _find_by_name(lineage: Lineage, name: str):
     for person in lineage.find_person_by_name(name):
         print_grey(' - '*17)
-        _print_person_details(lineage, person)
+        _print_person_details(person)
 
 
 def find(lineage: Lineage):
@@ -142,12 +190,14 @@ def find(lineage: Lineage):
 
 def all_persons(lineage: Lineage):
     print_heading('ALL PERSONS IN LINEAGE')
-    print_cyan(lineage.all_persons())
+    for person in lineage.all_persons():
+        print_cyan(person)
 
 
 def all_relations(lineage: Lineage):
     print_heading('ALL RELATIONS IN LINEAGE')
-    print_cyan(lineage.all_relations())
+    for relation in lineage.all_relations():
+        print_cyan(relation)
 
 
 def initialize_save_directories():
@@ -318,6 +368,8 @@ def main():
 
 
 if __name__ == '__main__':
-    clear_terminal()
     initialize_save_directories()
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        exit()

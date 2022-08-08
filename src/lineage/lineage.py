@@ -94,8 +94,8 @@ class Person:
         if self is to:
             raise ValueError("Can't be related to self")
         if self.relation_with(to) is not None:
-            raise ValueError('Relation is already present',
-                             self.relation_with(to))
+            raise ValueError(
+                f'Relation is already present ({self.relation_with(to)})')
 
         self.__graph.add_edges_from([(self, to, {Relation: relation}), ])
         self.__relatives_dict[relation].append(to)
@@ -131,9 +131,16 @@ class Person:
         child_rel = Relation.SON if child.__gender == 'm' else Relation.DAUGHTER
         parent_rel = Relation.FATHER if self.__gender == 'm' else Relation.MOTHER
 
-        # if len(child.__relatives[parent_rel])>=1:
-        if len(child.__relatives_dict[parent_rel]) >= 1:
+        if len(child.relatives_dict()[parent_rel]) >= 1:
             raise Exception("Can't have multiple father or mother values")
+
+        if parent_rel == Relation.FATHER:
+            if child.mother is not None and self.relation_with(child.mother) != Relation.WIFE:
+                raise ValueError(f'{self} and {child.mother} are not spouse')
+        else:
+            if child.father is not None and self.relation_with(child.father) != Relation.HUSBAND:
+                raise ValueError(f'{child.father} and {self} are not spouse')
+
         self.__add_relation(child, child_rel)
         child.__add_relation(self, parent_rel)
 
@@ -144,7 +151,7 @@ class Person:
         self.__validate_is_Person_object(other)
 
         if {self.__gender, other.__gender} != {'m', 'f'}:
-            raise ValueError
+            raise ValueError('Gender is same')
 
         if self.__gender == 'm':
             husband = self
@@ -170,18 +177,13 @@ class Lineage:
         self.__counter += 1
         return self.__counter
 
-    def add_person(self, name: str, gender: str, father: Person = None, mother: Person = None) -> Person:
-        return self._add_person_with_id(self.__new_id(), name, gender, father, mother)
+    def add_person(self, name: str, gender: str) -> Person:
+        return self._add_person_with_id(self.__new_id(), name, gender)
 
     # TODO Add id in graph node and person in node's attribute for faster search by id
-    def _add_person_with_id(self, id: int, name: str, gender: str, father: Person = None, mother: Person = None) -> Person:
+    def _add_person_with_id(self, id: int, name: str, gender: str) -> Person:
         person = Person(self._graph, id, name, gender)
         self._graph.add_node(person)
-
-        if father:
-            person.add_parent(father)
-        if mother:
-            person.add_parent(mother)
 
         return person
 
