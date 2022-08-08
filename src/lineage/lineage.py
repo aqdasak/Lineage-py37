@@ -25,7 +25,7 @@ class Person:
             raise ValueError('Gender should be either male(m) or female(f)')
         self.__graph = digraph
         self.__id = id
-        self.__name = name
+        self.name = name
         self.__gender = gender[0].lower()
         self.__relatives_dict: dict[Relation, list[Person]] = defaultdict(list)
 
@@ -36,6 +36,10 @@ class Person:
     @property
     def name(self) -> str:
         return self.__name
+
+    @name.setter
+    def name(self, name: str) -> None:
+        self.__name = name.title()
 
     @property
     def gender(self) -> str:

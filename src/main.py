@@ -41,6 +41,15 @@ def add_new_person(lineage: Lineage):
     lineage_modified = True
 
 
+def edit_name(lineage: Lineage):
+    print_heading('EDIT NAME')
+    person = lineage.find_person_by_id(
+        int(non_empty_input('Enter ID of person: ')))
+    print_cyan('Current name:', person.name)
+    person.name = non_empty_input('Enter new name: ')
+    _print_person_details(person)
+
+
 def add_parent(lineage: Lineage):
     print_heading('ADD PARENT')
     person = lineage.find_person_by_id(
@@ -289,12 +298,17 @@ def shortest_path(lineage: Lineage):
     person1_id = int(non_empty_input('Enter ID of I person: '))
     person2_id = int(non_empty_input('Enter ID of II person: '))
 
-    print_cyan(
-        lineage.shortest_path(
-            lineage.find_person_by_id(person1_id),
-            lineage.find_person_by_id(person2_id)
-        )
+    sp = lineage.shortest_path(
+        lineage.find_person_by_id(person1_id),
+        lineage.find_person_by_id(person2_id)
     )
+
+    for i in range(len(sp)-1):
+        print_cyan(sp[i], end=' ')
+        print_blue(f'--{sp[i].relation_with(sp[i+1]).name}->', end=' ')
+    print_cyan(sp[-1])
+
+    print_cyan('Distance:', len(sp)-1)
 
 
 def show_help(_):
@@ -304,6 +318,7 @@ def show_help(_):
         addp:\t\tAdd parent of a person
         addc:\t\tAdd child of a person
         adds:\t\tAdd spouse of a person
+        edit:\t\tEdit name of a person
         show:\t\tFind and show matching person
         showall:\tShow all persons in lineage
         showallrel:\tShow all relations in lineage
@@ -313,6 +328,7 @@ def show_help(_):
         save:\t\tSave lineage to file
         exit:\t\tExit the lineage prompt
         help:\t\tShow this help
+        Press <Ctrl>D in empty input to cancel
         """
                  )
 
@@ -335,6 +351,7 @@ def main():
         'addp': add_parent,
         'addc': add_child,
         'adds': add_spouse,
+        'edit': edit_name,
         'rmperson': remove_person,
         'rmrel': remove_relation,
         'save': save_to_file,
@@ -353,8 +370,8 @@ def main():
 
     while True:
         try:
-            commands.get(non_empty_input('# ').lower(),
-                         wrong_input)(lineage)
+            command = non_empty_input('# ').strip().lower()
+            commands.get(command, wrong_input)(lineage)
 
         except KeyboardInterrupt:
             print_red('\nAborted')

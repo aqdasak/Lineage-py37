@@ -1,4 +1,3 @@
-import os
 from colorama import Fore as c, Style
 
 
