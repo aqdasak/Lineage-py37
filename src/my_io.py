@@ -64,26 +64,32 @@ def input_in_range(msg: str, a: int, b: int = None) -> float:
 
 
 def print_red(*args, end='\n'):
+    end = c.LIGHTRED_EX + end + c.RESET
     print(c.LIGHTRED_EX + arg_parse(*args) + c.RESET, end=end)
 
 
 def print_green(*args, end='\n'):
+    end = c.LIGHTGREEN_EX + end + c.RESET
     print(c.LIGHTGREEN_EX + arg_parse(*args) + c.RESET, end=end)
 
 
 def print_blue(*args, end='\n'):
+    end = c.LIGHTBLUE_EX + end + c.RESET
     print(c.LIGHTBLUE_EX + arg_parse(*args) + c.RESET, end=end)
 
 
 def print_yellow(*args, end='\n'):
+    end = c.LIGHTYELLOW_EX + end + c.RESET
     print(c.LIGHTYELLOW_EX + arg_parse(*args) + c.RESET, end=end)
 
 
 def print_cyan(*args, end='\n'):
+    end = c.LIGHTCYAN_EX + end + c.RESET
     print(c.LIGHTCYAN_EX + arg_parse(*args) + c.RESET, end=end)
 
 
 def print_grey(*args, end='\n'):
+    end = c.LIGHTBLACK_EX + end + c.RESET
     print(c.LIGHTBLACK_EX + arg_parse(*args) + c.RESET, end=end)
 
 

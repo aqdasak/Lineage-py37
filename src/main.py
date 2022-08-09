@@ -17,8 +17,50 @@ def add_new_person(lineage: Lineage):
             print_red('Error in ID', id)
             print_red(e)
 
+    def find_same_name_persons(name: str) -> list[Person]:
+        new_person_name = name.lower()
+        all_persons = {person: person.name.lower().split(' ')
+                       for person in lineage.all_persons()}
+
+        found = []
+        for name in new_person_name.split(' '):
+
+            found2 = []
+            for person, fullname in all_persons.items():
+                if name in fullname:
+                    found2.append(person)
+
+            # name may be a common name
+            if len(found2) > 8:
+                found2 = []
+            found += found2
+
+        # Fullname exact match
+        for person in lineage.all_persons():
+            if new_person_name == person.name.lower():
+                found.append(person)
+
+        return list(set(found))
+
+    def do_continue_if_found(name: str) -> bool:
+        same_name_persons = find_same_name_persons(name)
+        if same_name_persons:
+            print_blue('\nPeople found with same name.')
+            for person in same_name_persons:
+                print_grey(' - '*17)
+                _print_person_details(person)
+
+            inp = input_from(
+                'Do you want to continue to add new person? (y/n): ', ('y', 'n', 'yes', 'no'))
+            print()
+            return True if inp in ('y', 'yes') else False
+        return True
+
     print_heading('ADD NEW PERSON')
     name = non_empty_input('Input name: ')
+    if not do_continue_if_found(name):
+        return
+
     gender = input_from('Input gender (m/f): ', ('m', 'f'))
     parent1 = get_person_by_id(take_input(
         'Input ID of parent1 or leave blank: '))
@@ -370,7 +412,7 @@ def main():
 
     while True:
         try:
-            command = non_empty_input('# ').strip().lower()
+            command = non_empty_input('# ').replace(' ', '').lower()
             commands.get(command, wrong_input)(lineage)
 
         except KeyboardInterrupt:
