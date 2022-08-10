@@ -181,12 +181,9 @@ class Lineage:
         self.__counter += 1
         return self.__counter
 
-    def add_person(self, name: str, gender: str) -> Person:
-        return self._add_person_with_id(self.__new_id(), name, gender)
-
     # TODO Add id in graph node and person in node's attribute for faster search by id
-    def _add_person_with_id(self, id: int, name: str, gender: str) -> Person:
-        person = Person(self._graph, id, name, gender)
+    def add_person(self, name: str, gender: str) -> Person:
+        person = Person(self._graph, self.__new_id(), name, gender)
         self._graph.add_node(person)
 
         return person
@@ -258,20 +255,21 @@ class Lineage:
             relations_data = data['relations']
 
             persons_dict: dict[int, Person] = {}
-            for id, name, gender in persons_data:
+            for prev_id, name, gender in persons_data:
                 try:
-                    person = lineage._add_person_with_id(int(id), name, gender)
-                    lineage.__counter += 1
+                    # Here persons new id can be different or
+                    # Lineage counter should be made equal to the highest id assigned plus 1
+                    person = lineage.add_person(name, gender)
 
-                    persons_dict[person.id] = person
+                    persons_dict[prev_id] = person
                 except Exception:
                     pass
 
-            for id1, id2, relation in relations_data:
+            for prev_id1, prev_id2, relation in relations_data:
                 try:
-                    id1, id2 = int(id1), int(id2)
-                    persons_dict[id1]._Person__add_relation(
-                        persons_dict[id2], Relation[relation])
+                    prev_id1, prev_id2 = int(prev_id1), int(prev_id2)
+                    persons_dict[prev_id1]._Person__add_relation(
+                        persons_dict[prev_id2], Relation[relation])
 
                 except Exception:
                     pass
