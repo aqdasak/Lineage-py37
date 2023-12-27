@@ -2,3 +2,5 @@ ATemp*
 tempCodeRunnerFile*
 __pycache__/
 *.csv
+*.json
+.vscode/

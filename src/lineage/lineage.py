@@ -21,8 +21,8 @@ class Relation(Enum):
 
 class Person:
     def __init__(self, digraph: DiGraph, id: int, name: str, gender: str) -> None:
-        if gender not in ('m', 'f'):
-            raise ValueError('Gender should be either male(m) or female(f)')
+        if gender not in ("m", "f"):
+            raise ValueError("Gender should be either male(m) or female(f)")
         self.__graph = digraph
         self.__id = id
         self.name = name
@@ -98,10 +98,9 @@ class Person:
         if self is to:
             raise ValueError("Can't be related to self")
         if self.relation_with(to) is not None:
-            raise ValueError(
-                f'Relation is already present ({self.relation_with(to)})')
+            raise ValueError(f"Relation is already present ({self.relation_with(to)})")
 
-        self.__graph.add_edges_from([(self, to, {Relation: relation}), ])
+        self.__graph.add_edges_from([(self, to, {Relation: relation})])
         self.__relatives_dict[relation].append(to)
 
     def remove_relative(self, relative: Person) -> None:
@@ -111,7 +110,7 @@ class Person:
                 person1.__relatives_dict[relation].remove(person2)
                 person1.__graph.remove_edge(person1, person2)
             else:
-                raise Exception('Relation not present')
+                raise Exception("Relation not present")
 
         remove_from_one_side(self, relative)
         remove_from_one_side(relative, self)
@@ -120,8 +119,7 @@ class Person:
         person = self
         for _, relatives in person.relatives_dict().items():
             for relative in relatives:
-                relative.__relatives_dict[relative.relation_with(
-                    person)].remove(person)
+                relative.__relatives_dict[relative.relation_with(person)].remove(person)
         person.__graph.remove_node(person)
 
     @staticmethod
@@ -132,18 +130,24 @@ class Person:
     def add_child(self, child: Person) -> None:
         self.__validate_is_Person_object(child)
 
-        child_rel = Relation.SON if child.__gender == 'm' else Relation.DAUGHTER
-        parent_rel = Relation.FATHER if self.__gender == 'm' else Relation.MOTHER
+        child_rel = Relation.SON if child.__gender == "m" else Relation.DAUGHTER
+        parent_rel = Relation.FATHER if self.__gender == "m" else Relation.MOTHER
 
         if len(child.relatives_dict()[parent_rel]) >= 1:
             raise Exception("Can't have multiple father or mother values")
 
         if parent_rel == Relation.FATHER:
-            if child.mother is not None and self.relation_with(child.mother) != Relation.WIFE:
-                raise ValueError(f'{self} and {child.mother} are not spouse')
+            if (
+                child.mother is not None
+                and self.relation_with(child.mother) != Relation.WIFE
+            ):
+                raise ValueError(f"{self} and {child.mother} are not spouse")
         else:
-            if child.father is not None and self.relation_with(child.father) != Relation.HUSBAND:
-                raise ValueError(f'{child.father} and {self} are not spouse')
+            if (
+                child.father is not None
+                and self.relation_with(child.father) != Relation.HUSBAND
+            ):
+                raise ValueError(f"{child.father} and {self} are not spouse")
 
         self.__add_relation(child, child_rel)
         child.__add_relation(self, parent_rel)
@@ -154,10 +158,10 @@ class Person:
     def add_spouse(self, other: Person) -> None:
         self.__validate_is_Person_object(other)
 
-        if {self.__gender, other.__gender} != {'m', 'f'}:
-            raise ValueError('Gender is same')
+        if {self.__gender, other.__gender} != {"m", "f"}:
+            raise ValueError("Gender is same")
 
-        if self.__gender == 'm':
+        if self.__gender == "m":
             husband = self
             wife = other
         else:
@@ -169,7 +173,7 @@ class Person:
 
     def __repr__(self) -> str:
         # return f'P{self.id}({self.name.split(" ")[0]})'
-        return f'P{self.id}({self.name})'
+        return f"P{self.id}({self.name})"
 
 
 class Lineage:
@@ -228,21 +232,21 @@ class Lineage:
 
     def save_to_file(self, filename: Path | str) -> None:
         data = {
-            'headers': {
-                'persons': ['id', 'name', 'gender'],
-                'relations': ['id1', 'id2', 'relation']
+            "headers": {
+                "persons": ["id", "name", "gender"],
+                "relations": ["id1", "id2", "relation"],
             },
-            'persons': [],
-            'relations': []
+            "persons": [],
+            "relations": [],
         }
 
         for person in self.all_persons():
-            data['persons'].append([person.id, person.name, person.gender])
+            data["persons"].append([person.id, person.name, person.gender])
 
         for p1, p2, relation in self.all_relations():
-            data['relations'].append([p1.id, p2.id, relation.name])
+            data["relations"].append([p1.id, p2.id, relation.name])
 
-        with open(filename, 'w') as f:
+        with open(filename, "w") as f:
             json.dump(data, f, indent=4)
 
     @classmethod
@@ -251,8 +255,8 @@ class Lineage:
 
         with open(filename) as f:
             data = json.load(f)
-            persons_data = data['persons']
-            relations_data = data['relations']
+            persons_data = data["persons"]
+            relations_data = data["relations"]
 
             persons_dict: dict[int, Person] = {}
             for prev_id, name, gender in persons_data:
@@ -269,7 +273,8 @@ class Lineage:
                 try:
                     prev_id1, prev_id2 = int(prev_id1), int(prev_id2)
                     persons_dict[prev_id1]._Person__add_relation(
-                        persons_dict[prev_id2], Relation[relation])
+                        persons_dict[prev_id2], Relation[relation]
+                    )
 
                 except Exception:
                     pass
