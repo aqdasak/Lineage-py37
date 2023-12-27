@@ -100,3 +100,20 @@ def print_heading(*args):
     print(st)
     print("-" * len(st), end="")
     print(c.RESET + Style.NORMAL)
+
+
+def print_id_name_in_box(id: str, name: str):
+    n_len = len(name)
+    i_len = len(id)
+    print_yellow("\t ╭" + "─" * (max(n_len, i_len) + 2) + "╮")
+
+    print_blue("ID:\t", end=" ")
+    print_yellow("│", end=" ")
+    print_cyan(id, end=" ")
+    print_yellow(" " * max(n_len - i_len, 0) + "│")
+
+    print_blue("Name:\t", end=" ")
+    print_yellow("│", end=" ")
+    print_cyan(name, end=" ")
+    print_yellow(" " * max(i_len - n_len, 0) + "│")
+    print_yellow("\t ╰" + "─" * (max(n_len, i_len) + 2) + "╯")

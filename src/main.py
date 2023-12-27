@@ -12,6 +12,7 @@ from my_io import (
     print_green,
     print_grey,
     print_heading,
+    print_id_name_in_box,
     print_yellow,
     print_red,
     take_input,
@@ -59,7 +60,7 @@ def add_new_person(lineage: Lineage):
         if same_name_persons:
             print_blue("\nPeople found with same name.")
             for person in same_name_persons:
-                print_grey(" - " * 17)
+                print_grey("-" * 50)
                 _print_person_details(person)
 
             inp = input_from(
@@ -101,6 +102,9 @@ def edit_name(lineage: Lineage):
     print_cyan("Current name:", person.name)
     person.name = non_empty_input("Enter new name: ")
     _print_person_details(person)
+
+    global lineage_modified
+    lineage_modified = True
 
 
 def add_parent(lineage: Lineage):
@@ -178,20 +182,11 @@ def remove_relation(lineage: Lineage):
 def _print_person_details(person: Person):
     def print_person(person: Person | list[Person], end="\n"):
         if isinstance(person, list):
-            last = len(person) - 1
-            for i, p in enumerate(person):
-                if i < last:
-                    print_person(p, end=", ")
-                else:
-                    print_person(p)
+            for p in person[:-1]:
+                print_person(p, end=", ")
+            print_person(person[-1])
         else:
             print_cyan(f"P{person.id}({person.name})", end=end)
-
-    print_blue("ID:\t", end=" ")
-    print_cyan(person.id)
-
-    print_blue("Name:\t", end=" ")
-    print_cyan(person.name)
 
     father = person.father
     mother = person.mother
@@ -206,9 +201,13 @@ def _print_person_details(person: Person):
     if mother:
         print_blue("Mother:\t", end=" ")
         print_person(mother)
+
+    print_id_name_in_box(str(person.id), person.name)
+
     if husband:
         print_blue("Husband:", end=" ")
         print_person(husband)
+
     if wife:
         print_blue("Wife:\t", end=" ")
         print_person(wife)
@@ -230,7 +229,7 @@ def _find_by_id(lineage: Lineage, id: int):
 
 def _find_by_name(lineage: Lineage, name: str):
     for person in lineage.find_person_by_name(name):
-        print_grey(" - " * 17)
+        print_grey("─" * 50)
         _print_person_details(person)
 
 
@@ -269,7 +268,9 @@ def save_to_file(lineage: Lineage):
     global lineage_modified
     if not lineage_modified:
         print_red("No change since last save")
-        return
+        inp = non_empty_input("Do you want to save again (y/n): ")
+        if inp not in ("y", "yes"):
+            return
 
     filename = (
         Path().home()
@@ -281,7 +282,7 @@ def save_to_file(lineage: Lineage):
 
         lineage_modified = False
 
-    except Exception as e:
+    except Exception:
         print_red("Some error occured while saving file")
 
 
@@ -297,7 +298,7 @@ def autosave(lineage: Lineage):
     try:
         lineage.save_to_file(filename)
 
-        lineage_modified = False
+        # lineage_modified = False
     except Exception:
         pass
 
@@ -312,18 +313,14 @@ def load_from_file() -> Lineage | None:
     files.sort(reverse=True)
 
     if len(files) == 0:
-        print_red("No csv file found in", path)
+        print_red("No saved file found in", path)
         return
 
-    i = 1
-    if len(files) == 1:
-        print_yellow(file[0].name, "found")
-    else:
-        for file in files:
-            print_cyan(f"{i}: {file.name}")
-            i += 1
+    print_cyan(f" 1: {files[0].name} (latest)")
+    for i, file in enumerate(files[1:], 2):
+        print_cyan(f"{i:2d}: {file.name}")
 
-        inp = int(input_in_range("Select the file to load: ", 1, len(files) + 1))
+    inp = int(input_in_range("Select the file to load: ", 1, len(files) + 1))
 
     return Lineage.load_from_file(files[inp - 1])
 
@@ -434,7 +431,7 @@ def main():
         except Exception as e:
             print_red(e)
 
-        print_grey("_" * 50)
+        print_grey("─" * 50)
 
 
 if __name__ == "__main__":

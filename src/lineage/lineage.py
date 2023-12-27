@@ -158,7 +158,8 @@ class Person:
     def add_spouse(self, other: Person) -> None:
         self.__validate_is_Person_object(other)
 
-        if {self.__gender, other.__gender} != {"m", "f"}:
+        # if {self.__gender, other.__gender} != {'m', 'f'}:
+        if self.__gender == other.__gender:
             raise ValueError("Gender is same")
 
         if self.__gender == "m":
