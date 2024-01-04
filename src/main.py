@@ -3,6 +3,8 @@ from datetime import datetime
 from pathlib import Path
 from lineage import Lineage
 from lineage.lineage import Person
+import signal
+from sys import exit
 from my_io import (
     input_from,
     input_in_range,
@@ -17,6 +19,7 @@ from my_io import (
     print_red,
     take_input,
 )
+
 
 lineage_modified = False
 
@@ -329,14 +332,14 @@ def safe_exit(lineage: Lineage):
     global lineage_modified
     if not lineage_modified:
         print_yellow("Exiting...")
-        exit()
+        exit(0)
 
     inp = non_empty_input(
         "You have unsaved data. Do you really want to exit without saving (y/n): "
     )
     if inp in ("y", "yes"):
         autosave(lineage)
-        exit()
+        exit(0)
 
     print_red("Exit aborted")
 
@@ -382,6 +385,15 @@ def show_help(_):
     )
 
 
+def set_keyboard_interrupt_signal_handler(lineage):
+    def signal_handler(sig, frame):
+        print_red("\nAborted")
+        autosave(lineage)
+        exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+
 def main():
     print_heading("LINEAGE")
     lineage = None
@@ -418,15 +430,18 @@ def main():
 
     show_help(None)
 
+    set_keyboard_interrupt_signal_handler(lineage)
     while True:
         try:
             command = non_empty_input("# ").replace(" ", "").lower()
             commands.get(command, wrong_input)(lineage)
 
-        except KeyboardInterrupt:
-            print_red("\nAborted")
-            autosave(lineage)
-            exit()
+        # except KeyboardInterrupt:
+        #     handled by set_keyboard_interrupt_signal_handler
+
+        #     print_red("\nAborted")
+        #     autosave(lineage)
+        #     exit(0)
 
         except Exception as e:
             print_red(e)
@@ -439,4 +454,4 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        exit()
+        exit(0)

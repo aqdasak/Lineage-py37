@@ -4,3 +4,6 @@ __pycache__/
 *.csv
 *.json
 .vscode/
+build/
+dist/
+main.spec
