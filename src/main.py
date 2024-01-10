@@ -1,10 +1,12 @@
 from __future__ import annotations
 from datetime import datetime
+import os
 from pathlib import Path
 from lineage import Lineage
 from lineage.lineage import Person
 import signal
 from sys import exit
+from time import sleep
 from my_io import (
     input_from,
     input_in_range,
@@ -332,6 +334,12 @@ def safe_exit(lineage: Lineage):
     global lineage_modified
     if not lineage_modified:
         print_yellow("Exiting...")
+
+        st = "Closing................"
+        for i in st:
+            sleep(0.05)
+            print(i, sep="", end="", flush=True)
+
         exit(0)
 
     inp = non_empty_input(
@@ -339,6 +347,12 @@ def safe_exit(lineage: Lineage):
     )
     if inp in ("y", "yes"):
         autosave(lineage)
+
+        st = "Closing................"
+        for i in st:
+            sleep(0.05)
+            print(i, sep="", end="", flush=True)
+
         exit(0)
 
     print_red("Exit aborted")
@@ -365,7 +379,7 @@ def shortest_path(lineage: Lineage):
 def show_help(_):
     print_yellow("USAGE: Type following commands to do respective action")
     print_yellow(
-        """\
+        f"""\
         new:\t\tAdd new person
         addp:\t\tAdd parent of a person
         addc:\t\tAdd child of a person
@@ -380,16 +394,14 @@ def show_help(_):
         save:\t\tSave lineage to file
         exit:\t\tExit the lineage prompt
         help:\t\tShow this help
-        Press <Ctrl>D in empty input to cancel
+        Press {'<Ctrl>Z then Enter' if os.name == 'nt' else '<Ctrl>D'} in empty input to cancel
         """
     )
 
 
 def set_keyboard_interrupt_signal_handler(lineage):
     def signal_handler(sig, frame):
-        print_red("\nAborted")
-        autosave(lineage)
-        exit(0)
+        safe_exit(lineage)
 
     signal.signal(signal.SIGINT, signal_handler)
 
