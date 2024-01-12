@@ -248,7 +248,7 @@ class Lineage:
             data["relations"].append([p1.id, p2.id, relation.name])
 
         with open(filename, "w") as f:
-            json.dump(data, f, indent=4)
+            json.dump(data, f, indent=0, separators=(",", ":"))
 
     @classmethod
     def load_from_file(cls, filename: Path | str) -> Lineage:

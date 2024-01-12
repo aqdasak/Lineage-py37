@@ -1,8 +1,17 @@
 [tool.poetry]
-name = "Lineage"
-version = "0.6.1"
-description = ""
-authors = ["Aqdas <aqdasak@gmail.com>"]
+name = "lineage-aq"
+version = "0.6.2"
+description = "Interactive command line interface to create and edit lineage of families."
+authors = ["Aqdas Ahmad Khan <aqdasak@gmail.com>"]
+readme = "README.md"
+homepage = "https://github.com/aqdasak/Lineage/"
+repository = "https://github.com/aqdasak/Lineage/"
+license = "MIT"
+keywords = ['python', 'lineage', 'genealogy']
+
+
+[tool.poetry.scripts]
+lineage = "lineage_aq.__main__:main"
 
 [tool.poetry.dependencies]
 python = "^3.10"

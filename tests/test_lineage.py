@@ -1,13 +1,12 @@
 import string
-from src.lineage import Lineage
-from src.lineage.lineage import Person, Relation
+from lineage_aq import Lineage, Person, Relation
 
 
 def factory():
     lineage = Lineage()
-    father = lineage.add_person('Father', 'm')
-    mother = lineage.add_person('Mother', 'f')
-    child = lineage.add_person('Child', 'm')
+    father = lineage.add_person("Father", "m")
+    mother = lineage.add_person("Mother", "f")
+    child = lineage.add_person("Child", "m")
     father.add_spouse(mother)
     child.add_parent(father)
     child.add_parent(mother)
@@ -19,9 +18,9 @@ def test_relation():
     _, father, mother, child = factory()
     assert child.father == father
     assert child.mother == mother
-    assert father.name == 'Father'
-    assert mother.name == 'Mother'
-    assert child.name == 'Child'
+    assert father.name == "Father"
+    assert mother.name == "Mother"
+    assert child.name == "Child"
 
     assert set(child.parents) == set((mother, father))
     assert len(father.sons) <= len(father.children)
@@ -45,7 +44,7 @@ def test_relatives():
 
 def test_relation_with():
     lineage, father, mother, child = factory()
-    person = lineage.add_person('Person', 'm')
+    person = lineage.add_person("Person", "m")
     persons = (father, mother, child, person)
 
     for person1 in persons:
@@ -70,7 +69,7 @@ def test_add_person():
     lineage, _, _, _ = factory()
 
     all_persons1 = list(lineage.all_persons())
-    person = lineage.add_person('Person', 'm')
+    person = lineage.add_person("Person", "m")
     all_persons2 = list(lineage.all_persons())
 
     assert all_persons1 is not all_persons2
@@ -81,7 +80,7 @@ def test_add_person():
 
 def test_add_parent():
     lineage, father, mother, child = factory()
-    child2 = lineage.add_person('Child2', 'm')
+    child2 = lineage.add_person("Child2", "m")
 
     assert set(father.children) == set((child,))
     assert set(mother.children) == set((child,))
@@ -100,7 +99,7 @@ def test_add_parent():
 
 def test_add_child():
     lineage, father, mother, child = factory()
-    child2 = lineage.add_person('Child2', 'm')
+    child2 = lineage.add_person("Child2", "m")
 
     assert set(father.children) == set((child,))
     assert set(mother.children) == set((child,))
@@ -116,14 +115,14 @@ def test_add_child():
 
 def test_add_spouse():
     lineage, _, _, _ = factory()
-    person_a1 = lineage.add_person('Person1', 'm')
-    person_a2 = lineage.add_person('Person2', 'f')
+    person_a1 = lineage.add_person("Person1", "m")
+    person_a2 = lineage.add_person("Person2", "f")
     person_a1.add_spouse(person_a2)
     assert person_a1.wife[0] == person_a2
     assert person_a2.husband[0] == person_a1
 
-    person_b1 = lineage.add_person('Person1', 'm')
-    person_b2 = lineage.add_person('Person2', 'f')
+    person_b1 = lineage.add_person("Person1", "m")
+    person_b2 = lineage.add_person("Person2", "f")
     person_b2.add_spouse(person_b1)
     assert person_b2.husband[0] == person_b1
     assert person_b1.wife[0] == person_b2
@@ -154,7 +153,7 @@ def test_remove_relative():
         assert father not in relatives_list
         assert mother not in relatives_list
 
-    error_raised = [False]*4
+    error_raised = [False] * 4
     # Removing relation which is not present
     # Following must raise exception
     try:
@@ -214,7 +213,7 @@ def test_change_relation_not_allowed():
 
 def test_add_multiple_father_not_allowed():
     lineage, _, _, child = factory()
-    person = lineage.add_person('Person', 'm')
+    person = lineage.add_person("Person", "m")
 
     error_raised = False
     try:
@@ -228,7 +227,7 @@ def test_add_multiple_father_not_allowed():
 
 def test_add_multiple_mother_not_allowed():
     lineage, _, _, child = factory()
-    person = lineage.add_person('Person', 'f')
+    person = lineage.add_person("Person", "f")
 
     error_raised = False
     try:
@@ -242,10 +241,10 @@ def test_add_multiple_mother_not_allowed():
 
 def test_multiple_same_gender_people_adding_same_child_not_allowed():
     lineage, _, _, child = factory()
-    person_m = lineage.add_person('Person', 'm')
-    person_f = lineage.add_person('Person', 'f')
+    person_m = lineage.add_person("Person", "m")
+    person_f = lineage.add_person("Person", "f")
 
-    error_raised = [False]*2
+    error_raised = [False] * 2
     # Following must raise exception
     try:
         person_m.add_child(child)
@@ -262,12 +261,12 @@ def test_multiple_same_gender_people_adding_same_child_not_allowed():
 
 def test_same_gender_spouse_error():
     lineage, _, _, _ = factory()
-    person1 = lineage.add_person('Person1', 'm')
-    person2 = lineage.add_person('Person2', 'm')
-    person3 = lineage.add_person('Person3', 'f')
-    person4 = lineage.add_person('Person4', 'f')
+    person1 = lineage.add_person("Person1", "m")
+    person2 = lineage.add_person("Person2", "m")
+    person3 = lineage.add_person("Person3", "f")
+    person4 = lineage.add_person("Person4", "f")
 
-    error_raised = [False]*2
+    error_raised = [False] * 2
     # Following must raise exception
     try:
         person1.add_spouse(person2)
@@ -285,13 +284,13 @@ def test_unknown_gender_error():
     lineage, _, _, _ = factory()
 
     invalid_genders = list(string.ascii_lowercase)
-    invalid_genders.remove('m')
-    invalid_genders.remove('f')
-    error_raised = [False]*len(invalid_genders)
+    invalid_genders.remove("m")
+    invalid_genders.remove("f")
+    error_raised = [False] * len(invalid_genders)
     # Following must raise exception
     for i, gender in enumerate(invalid_genders):
         try:
-            lineage.add_person('P', gender)
+            lineage.add_person("P", gender)
         except Exception:
             error_raised[i] = True
 
@@ -300,7 +299,7 @@ def test_unknown_gender_error():
 
 def test_empty_relatives():
     lineage, _, _, _ = factory()
-    person = lineage.add_person('Person', 'm')
+    person = lineage.add_person("Person", "m")
     assert person.children == []
     assert person.sons == []
     assert person.daughters == []
@@ -314,7 +313,7 @@ def test_empty_relatives():
 def test_no_self_loop():
     _, _, _, person = factory()
 
-    error_raised = [False]*3
+    error_raised = [False] * 3
     # Following must raise exception
     try:
         person.add_child(person)
@@ -337,7 +336,7 @@ def test_no_self_loop():
 def test_shortest_path():
     lineage, father, mother, _ = factory()
 
-    child = lineage.add_person('Child', 'm')
+    child = lineage.add_person("Child", "m")
     child.add_parent(father)
 
     assert len(lineage.shortest_path(child, mother)) == 3
@@ -348,7 +347,7 @@ def test_shortest_path():
 def test_save_and_load_file():
     lineage, father, mother, child = factory()
 
-    filename = 'test_lineage.json'
+    filename = "test_lineage.json"
     lineage.save_to_file(filename)
 
     new_lineage = Lineage.load_from_file(filename)
@@ -387,6 +386,7 @@ def test_save_and_load_file():
     assert len(lineage.all_relations()) == len(new_lineage.all_relations())
 
     from os import remove
+
     remove(filename)
 
 
@@ -399,7 +399,7 @@ def test_find_by_id():
 
 def test_find_by_name():
     lineage, father, mother, child = factory()
-    assert lineage.find_person_by_name('fAth')[0] == father
-    assert lineage.find_person_by_name('AthEr')[0] == father
-    assert lineage.find_person_by_name('oTheR')[0] == mother
-    assert lineage.find_person_by_name('ild')[0] == child
+    assert lineage.find_person_by_name("fAth")[0] == father
+    assert lineage.find_person_by_name("AthEr")[0] == father
+    assert lineage.find_person_by_name("oTheR")[0] == mother
+    assert lineage.find_person_by_name("ild")[0] == child

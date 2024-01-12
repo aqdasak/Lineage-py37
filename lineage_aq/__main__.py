@@ -2,12 +2,11 @@ from __future__ import annotations
 from datetime import datetime
 import os
 from pathlib import Path
-from lineage import Lineage
-from lineage.lineage import Person
+from lineage_aq import Lineage, Person
 import signal
 from sys import exit
 from time import sleep
-from my_io import (
+from lineage_aq.my_io import (
     input_from,
     input_in_range,
     non_empty_input,
@@ -401,12 +400,13 @@ def show_help(_):
 
 def set_keyboard_interrupt_signal_handler(lineage):
     def signal_handler(sig, frame):
+        print()
         safe_exit(lineage)
 
     signal.signal(signal.SIGINT, signal_handler)
 
 
-def main():
+def _main():
     print_heading("LINEAGE")
     lineage = None
 
@@ -461,9 +461,13 @@ def main():
         print_grey("─" * 50)
 
 
-if __name__ == "__main__":
+def main():
     initialize_save_directories()
     try:
-        main()
+        _main()
     except KeyboardInterrupt:
         exit(0)
+
+
+if __name__ == "__main__":
+    main()
