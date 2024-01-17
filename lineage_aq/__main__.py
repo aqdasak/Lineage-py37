@@ -1,8 +1,9 @@
 from __future__ import annotations
+from collections import defaultdict
 from datetime import datetime
 import os
 from pathlib import Path
-from lineage_aq import Lineage, Person
+from lineage_aq import Lineage, Person, Relation
 import signal
 from sys import exit
 from time import sleep
@@ -334,10 +335,10 @@ def safe_exit(lineage: Lineage):
     if not lineage_modified:
         print_yellow("Exiting...")
 
-        st = "Closing................"
-        for i in st:
-            sleep(0.05)
-            print(i, sep="", end="", flush=True)
+        # st = "Closing................"
+        # for i in st:
+        #     sleep(0.05)
+        #     print(i, sep="", end="", flush=True)
 
         exit(0)
 
@@ -375,27 +376,80 @@ def shortest_path(lineage: Lineage):
     print_cyan("Distance:", len(sp) - 1)
 
 
-def show_help(_):
+def _helper_no_and_single_parent(lineage: Lineage) -> (set, set):
+    """Return set of persons having father and set of persons having mother"""
+
+    relations = lineage.all_relations()
+    rel = defaultdict(set)
+    for p, _, r in relations:
+        rel[r].add(p)
+
+    return rel[Relation.FATHER], rel[Relation.MOTHER]
+
+
+def no_parent(lineage: Lineage):
+    print_heading("PERSONS HAVING NO PARENT")
+    f, m = _helper_no_and_single_parent(lineage)
+
+    allp = set(lineage.all_persons())
+    no_parent = allp - f.union(m)
+
+    if len(no_parent) == 0:
+        print_red("All persons are having at least one parent")
+        return
+
+    no_parent = sorted(no_parent, key=lambda p: p.id)
+    for i in no_parent:
+        print(i)
+    print_cyan("Total persons:", len(no_parent))
+
+
+def one_parent(lineage: Lineage):
+    print_heading("PERSONS HAVING SINGLE PARENT")
+    f, m = _helper_no_and_single_parent(lineage)
+
+    single_parent = f.union(m) - f.intersection(m)
+
+    if len(single_parent) == 0:
+        print_red("No person is having only single parent")
+        return
+
+    single_parent = sorted(single_parent, key=lambda p: p.id)
+    for i in single_parent:
+        print(i)
+
+    print_cyan("Total persons:", len(single_parent))
+
+
+def show_help(_=None, show_changes=False):
     print_yellow("USAGE: Type following commands to do respective action")
-    print_yellow(
-        f"""\
-        new:\t\tAdd new person
-        addp:\t\tAdd parent of a person
-        addc:\t\tAdd child of a person
-        adds:\t\tAdd spouse of a person
-        edit:\t\tEdit name of a person
-        show:\t\tFind and show matching person
-        showall:\tShow all persons in lineage
-        showallrel:\tShow all relations in lineage
-        sp:\t\tShortest path between two persons
-        rmrel:\t\tRemove relation between two persons
-        rmperson:\tRemove person from lineage
-        save:\t\tSave lineage to file
-        exit:\t\tExit the lineage prompt
-        help:\t\tShow this help
-        Press {'<Ctrl>Z then Enter' if os.name == 'nt' else '<Ctrl>D'} in empty input to cancel
-        """
-    )
+    help = f"""\
+new:\t\tAdd new person
+addp:\t\tAdd parent of a person
+addc:\t\tAdd child of a person
+adds:\t\tAdd spouse of a person
+edit:\t\tEdit name of a person
+show:\t\tFind and show matching person
+showall:\tShow all persons in lineage
+showallrel:\tShow all relations in lineage
+sp:\t\tShortest path between two persons
+rmrel:\t\tRemove relation between two persons
+rmperson:\tRemove person from lineage
+noparent:\tPersons whose no parent is present in lineage
+oneparent:\tPersons whose only one parent is present in lineage
+save:\t\tSave lineage to file
+exit:\t\tExit the lineage prompt
+help:\t\tShow this help
+Press {'<Ctrl>Z then Enter' if os.name == 'nt' else '<Ctrl>D'} in empty input to cancel
+"""
+
+    new = [12, 13]
+    for i, line in enumerate(help.split("\n"), 1):
+        if show_changes and i in new:
+            print_green("(new)", end="")
+            print_yellow(" " * 3, line)
+        else:
+            print_yellow(" " * 8, line)
 
 
 def set_keyboard_interrupt_signal_handler(lineage):
@@ -428,6 +482,8 @@ def _main():
         "edit": edit_name,
         "rmperson": remove_person,
         "rmrel": remove_relation,
+        "noparent": no_parent,
+        "oneparent": one_parent,
         "save": save_to_file,
         "show": find,
         "showall": all_persons,
@@ -440,7 +496,7 @@ def _main():
     def wrong_input(_):
         print_red("Wrong input")
 
-    show_help(None)
+    show_help(show_changes=True)
 
     set_keyboard_interrupt_signal_handler(lineage)
     while True:
