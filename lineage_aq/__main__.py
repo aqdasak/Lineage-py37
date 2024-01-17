@@ -233,7 +233,12 @@ def _find_by_id(lineage: Lineage, id: int):
 
 
 def _find_by_name(lineage: Lineage, name: str):
-    for person in lineage.find_person_by_name(name):
+    persons = lineage.find_person_by_name(name)
+    if len(persons) == 0:
+        print_red("Name not found")
+        return
+
+    for person in persons:
         print_grey("─" * 50)
         _print_person_details(person)
 
@@ -430,6 +435,7 @@ addc:\t\tAdd child of a person
 adds:\t\tAdd spouse of a person
 edit:\t\tEdit name of a person
 show:\t\tFind and show matching person
+find:\t\tFind and show matching person
 showall:\tShow all persons in lineage
 showallrel:\tShow all relations in lineage
 sp:\t\tShortest path between two persons
@@ -441,15 +447,23 @@ save:\t\tSave lineage to file
 exit:\t\tExit the lineage prompt
 help:\t\tShow this help
 Press {'<Ctrl>Z then Enter' if os.name == 'nt' else '<Ctrl>D'} in empty input to cancel
+Type ID or name directly in the command field to search
 """
 
-    new = [12, 13]
+    new = [7, 13, 14, 19]
+    deprecated = []
     for i, line in enumerate(help.split("\n"), 1):
         if show_changes and i in new:
             print_green("(new)", end="")
             print_yellow(" " * 3, line)
+        elif i in deprecated:
+            print_yellow(" " * 8, line, end=" ")
+            print_red("(deprecated)")
         else:
             print_yellow(" " * 8, line)
+
+    if deprecated:
+        print_grey("deprecated commands will be removed from future versions\n")
 
 
 def set_keyboard_interrupt_signal_handler(lineage):
@@ -486,6 +500,7 @@ def _main():
         "oneparent": one_parent,
         "save": save_to_file,
         "show": find,
+        "find": find,
         "showall": all_persons,
         "showallrel": all_relations,
         "sp": shortest_path,
@@ -493,16 +508,21 @@ def _main():
         "help": show_help,
     }
 
-    def wrong_input(_):
-        print_red("Wrong input")
-
     show_help(show_changes=True)
 
     set_keyboard_interrupt_signal_handler(lineage)
     while True:
         try:
-            command = non_empty_input("# ").replace(" ", "").lower()
-            commands.get(command, wrong_input)(lineage)
+            command = non_empty_input("# ")
+            command_ = command.replace(" ", "").lower()
+            if command_ in commands:
+                commands[command_](lineage)
+            else:
+                print_heading("FIND PERSON")
+                if command.isdigit():
+                    _find_by_id(lineage, int(command))
+                else:
+                    _find_by_name(lineage, command)
 
         # except KeyboardInterrupt:
         #     handled by set_keyboard_interrupt_signal_handler
