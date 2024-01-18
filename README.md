@@ -1,7 +1,6 @@
 # Lineage
 
-Genealogy management software
-
+Genealogy management software  
 Stores lineage of family. Interactive command line interface to create and edit lineage of families. 
 
 
@@ -53,5 +52,7 @@ Poetry is required. For installation click [here](https://python-poetry.org/docs
 In the source folder containing pyproject.toml, run
 ```
 poetry shell
-ytsort
+lineage
 ```
+
+> For Python3.7 compatible version click [here](https://github.com/aqdasak/Lineage-py37)
