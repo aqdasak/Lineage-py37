@@ -1,6 +1,7 @@
 from __future__ import annotations
 from collections import defaultdict
 from datetime import datetime
+import json
 import os
 from pathlib import Path
 from lineage_aq import Lineage, Person, Relation
@@ -314,6 +315,33 @@ def autosave(lineage: Lineage):
 
 
 def load_from_file() -> Lineage | None:
+    def print_num_persons_and_relations(file):
+        with open(file) as f:
+            data: dict = json.load(f)
+
+        num_persons = len(data["persons"])
+        num_relations = len(data["relations"])
+
+        if num_persons > 0:
+            print_grey(f"   [{num_persons}]", end="")
+
+        if num_relations > 0:
+            print_grey(f"\t[{num_relations}]", end="")
+
+    def print_all_files(files: list):
+        padding = len(str(len(files)))
+        print_yellow(" " * (padding - 1), end="")
+        print("# ", "Filenames", " " * 23, "Persons  Relations")
+
+        print(f"{1:{padding}d}:", files[0].name, end="")
+        print_num_persons_and_relations(files[0])
+        print_green(" (latest)")
+
+        for i, file in enumerate(files[1:], 2):
+            print(f"{i:{padding}d}:", file.name, end="")
+            print_num_persons_and_relations(file)
+            print()
+
     path = Path().home() / ".lineage"
     if not (path.exists() and path.is_dir()):
         print_red("Directory not found", path)
@@ -326,10 +354,7 @@ def load_from_file() -> Lineage | None:
         print_red("No saved file found in", path)
         return
 
-    print_cyan(f" 1: {files[0].name} (latest)")
-    for i, file in enumerate(files[1:], 2):
-        print_cyan(f"{i:2d}: {file.name}")
-
+    print_all_files(files)
     inp = int(input_in_range("Select the file to load: ", 1, len(files) + 1))
 
     return Lineage.load_from_file(files[inp - 1])
@@ -485,7 +510,7 @@ def _main():
         lineage = load_from_file()
 
     if lineage is None:
-        print_yellow("Creating new lineage")
+        print_yellow("Creating new lineage\n")
         lineage = Lineage()
 
     commands = {
