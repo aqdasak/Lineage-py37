@@ -57,3 +57,4 @@ In the source folder containing pyproject.toml, run
 poetry shell
 lineage
 ```
+
