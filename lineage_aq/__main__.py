@@ -5,7 +5,6 @@ import json
 import os
 from pathlib import Path
 from lineage_aq import Lineage, Person, Relation
-import signal
 from sys import exit
 from lineage_aq.my_io import (
     input_from,
@@ -364,12 +363,6 @@ def safe_exit(lineage: Lineage):
     global lineage_modified
     if not lineage_modified:
         print_yellow("Exiting...")
-
-        # st = "Closing................"
-        # for i in st:
-        #     sleep(0.05)
-        #     print(i, sep="", end="", flush=True)
-
         exit(0)
 
     inp = take_input(
@@ -377,12 +370,6 @@ def safe_exit(lineage: Lineage):
     )
     if inp in ("y", "yes"):
         autosave(lineage)
-
-        # st = "Closing................"
-        # for i in st:
-        #     sleep(0.05)
-        #     print(i, sep="", end="", flush=True)
-
         exit(0)
 
     print_red("Exit aborted")
@@ -491,14 +478,6 @@ Type ID or name directly in the command field to search
         print_grey("deprecated commands will be removed from future versions\n")
 
 
-def set_keyboard_interrupt_signal_handler(lineage):
-    def signal_handler(sig, frame):
-        print()
-        safe_exit(lineage)
-
-    signal.signal(signal.SIGINT, signal_handler)
-
-
 def _main():
     print_heading("LINEAGE")
     lineage = None
@@ -535,7 +514,6 @@ def _main():
 
     show_help(show_changes=True)
 
-    set_keyboard_interrupt_signal_handler(lineage)
     while True:
         try:
             command = non_empty_input("# ")
@@ -549,12 +527,12 @@ def _main():
                 else:
                     _find_by_name(lineage, command)
 
-        # except KeyboardInterrupt:
-        #     handled by set_keyboard_interrupt_signal_handler
-
-        #     print_red("\nAborted")
-        #     autosave(lineage)
-        #     exit(0)
+        except KeyboardInterrupt:
+            print()
+            try:
+                safe_exit(lineage)
+            except (KeyboardInterrupt, EOFError):
+                print()
 
         except Exception as e:
             print_red(e)
