@@ -95,7 +95,7 @@ def print_grey(*args, end="\n"):
 
 def print_heading(*args):
     print()
-    print(Style.BRIGHT + c.LIGHTBLUE_EX, end="")
+    print(Style.BRIGHT + c.LIGHTMAGENTA_EX, end="")
     st = arg_parse(*args)
     print(st)
     print("-" * len(st), end="")
