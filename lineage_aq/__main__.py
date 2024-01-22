@@ -7,7 +7,6 @@ from pathlib import Path
 from lineage_aq import Lineage, Person, Relation
 import signal
 from sys import exit
-from time import sleep
 from lineage_aq.my_io import (
     input_from,
     input_in_range,
@@ -70,7 +69,7 @@ def add_new_person(lineage: Lineage):
                 _print_person_details(person)
 
             inp = input_from(
-                "Do you want to continue to add new person? (y/n): ",
+                "Do you want to continue to add new person? [y/n]: ",
                 ("y", "n", "yes", "no"),
             )
             print()
@@ -279,8 +278,9 @@ def save_to_file(lineage: Lineage):
     global lineage_modified
     if not lineage_modified:
         print_red("No change since last save")
-        inp = non_empty_input("Do you want to save again (y/n): ")
+        inp = take_input("Do you want to save again [y/N]: ")
         if inp not in ("y", "yes"):
+            print_grey("Not saved, since not required")
             return
 
     filename = (
@@ -372,16 +372,16 @@ def safe_exit(lineage: Lineage):
 
         exit(0)
 
-    inp = non_empty_input(
-        "You have unsaved data. Do you really want to exit without saving (y/n): "
+    inp = take_input(
+        "You have unsaved data. Do you really want to exit without saving [y/N]: "
     )
     if inp in ("y", "yes"):
         autosave(lineage)
 
-        st = "Closing................"
-        for i in st:
-            sleep(0.05)
-            print(i, sep="", end="", flush=True)
+        # st = "Closing................"
+        # for i in st:
+        #     sleep(0.05)
+        #     print(i, sep="", end="", flush=True)
 
         exit(0)
 
