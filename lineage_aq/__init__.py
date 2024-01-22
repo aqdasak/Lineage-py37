@@ -1,1 +1,1 @@
-from .lineage_impl import Lineage, Person, Relation
+from .lineage import Lineage, Person, Relation

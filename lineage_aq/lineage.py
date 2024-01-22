@@ -117,9 +117,13 @@ class Person:
 
     def self_remove(self):
         person = self
+
+        # Removing this person from relatives' reltives_dict
+        # This can be done using self.remove_relative(relative), but it removes from both sides, which is not required here, since the person object will be deleted
         for _, relatives in person.relatives_dict().items():
             for relative in relatives:
                 relative.__relatives_dict[relative.relation_with(person)].remove(person)
+
         person.__graph.remove_node(person)
 
     @staticmethod

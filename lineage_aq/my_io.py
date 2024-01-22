@@ -95,7 +95,7 @@ def print_grey(*args, end="\n"):
 
 def print_heading(*args):
     print()
-    print(Style.BRIGHT + c.LIGHTBLUE_EX, end="")
+    print(Style.BRIGHT + c.LIGHTMAGENTA_EX, end="")
     st = arg_parse(*args)
     print(st)
     print("-" * len(st), end="")
@@ -105,15 +105,15 @@ def print_heading(*args):
 def print_id_name_in_box(id: str, name: str):
     n_len = len(name)
     i_len = len(id)
-    print_yellow("\t ╭" + "─" * (max(n_len, i_len) + 2) + "╮")
+    print_green("\t ╭" + "─" * (max(n_len, i_len) + 2) + "╮")
 
     print_blue("ID:\t", end=" ")
-    print_yellow("│", end=" ")
-    print_cyan(id, end=" ")
-    print_yellow(" " * max(n_len - i_len, 0) + "│")
+    print_green("│", end=" ")
+    print_green(id, end=" ")
+    print_green(" " * max(n_len - i_len, 0) + "│")
 
     print_blue("Name:\t", end=" ")
-    print_yellow("│", end=" ")
-    print_cyan(name, end=" ")
-    print_yellow(" " * max(i_len - n_len, 0) + "│")
-    print_yellow("\t ╰" + "─" * (max(n_len, i_len) + 2) + "╯")
+    print_green("│", end=" ")
+    print_green(name, end=" ")
+    print_green(" " * max(i_len - n_len, 0) + "│")
+    print_green("\t ╰" + "─" * (max(n_len, i_len) + 2) + "╯")

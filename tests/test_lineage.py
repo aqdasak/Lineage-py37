@@ -185,6 +185,13 @@ def test_remove_and_add_relative():
     assert child.father == father
 
 
+def test_self_remove():
+    _, father, mother, child = factory()
+    father.self_remove()
+    assert father not in mother.husband
+    assert father is not child.father
+
+
 def test_multiple_additions():
     _, father, mother, _ = factory()
 

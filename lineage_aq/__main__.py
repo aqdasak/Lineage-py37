@@ -5,9 +5,7 @@ import json
 import os
 from pathlib import Path
 from lineage_aq import Lineage, Person, Relation
-import signal
 from sys import exit
-from time import sleep
 from lineage_aq.my_io import (
     input_from,
     input_in_range,
@@ -25,6 +23,8 @@ from lineage_aq.my_io import (
 
 
 lineage_modified = False
+print_more_details = False
+print_id_with_person = 0  # Possible: 0(Off), 1(Parents only), 2(All)
 
 
 def add_new_person(lineage: Lineage):
@@ -70,7 +70,7 @@ def add_new_person(lineage: Lineage):
                 _print_person_details(person)
 
             inp = input_from(
-                "Do you want to continue to add new person? (y/n): ",
+                "Do you want to continue to add new person? [y/n]: ",
                 ("y", "n", "yes", "no"),
             )
             print()
@@ -192,7 +192,13 @@ def _print_person_details(person: Person):
                 print_person(p, end=", ")
             print_person(person[-1])
         else:
-            print_cyan(f"P{person.id}({person.name})", end=end)
+            global print_id_with_person
+            if print_id_with_person == 2:
+                print_cyan(f"P{person.id}({person.name})", end=end)
+            else:
+                print_cyan(person.name, end=end)
+
+    global print_more_details
 
     father = person.father
     mother = person.mother
@@ -202,27 +208,94 @@ def _print_person_details(person: Person):
     wife = person.wife
 
     if father:
-        print_blue("Father:\t", end=" ")
-        print_person(father)
+        print_blue("Father:\t ", end="")
+        if print_id_with_person == 1:
+            print_cyan(f"P{father.id}({father.name})", end="")
+        else:
+            print_person(father, end="")
+
+        if print_more_details:
+            p = father.father
+            while p:
+                print_cyan(" -> ", end="")
+                print_person(p, end="")
+                p = p.father
+        print()
+
+    if print_more_details and father and mother:
+        # Space to reduce clutter
+        print()
+
     if mother:
-        print_blue("Mother:\t", end=" ")
-        print_person(mother)
+        print_blue("Mother:\t ", end="")
+        if print_id_with_person == 1:
+            print_cyan(f"P{mother.id}({mother.name})", end="")
+        else:
+            print_person(mother, end="")
+
+        if print_more_details:
+            p = mother.father
+            while p:
+                print_cyan(" -> ", end="")
+                print_person(p, end="")
+                p = p.father
+        print()
 
     print_id_name_in_box(str(person.id), person.name)
 
     if husband:
-        print_blue("Husband:", end=" ")
+        print_blue("Husband: ", end="")
         print_person(husband)
 
     if wife:
-        print_blue("Wife:\t", end=" ")
+        print_blue("Wife:\t ", end="")
         print_person(wife)
     if sons:
-        print_blue("Son:\t", end=" ")
+        print_blue("Son:\t ", end="")
         print_person(sons)
     if daughters:
         print_blue("Daughter:", end="")
         print_person(daughters)
+
+    brother = []
+    sister = []
+    if father:
+        brother += father.sons
+        sister += father.daughters
+    if mother:
+        brother += mother.sons
+        sister += mother.daughters
+
+    brother = sorted(set(brother) - {person}, key=lambda person: person.id)
+    sister = sorted(set(sister) - {person}, key=lambda person: person.id)
+    if brother or sister:
+        print()
+    if brother:
+        print_blue("Brother: ", end="")
+        print_person(brother)
+    if sister:
+        print_blue("Sister:  ", end="")
+        print_person(sister)
+
+
+def toggle_print_more_details(_):
+    global print_more_details
+    print_more_details = not print_more_details
+    if print_more_details:
+        print("Details are on")
+    else:
+        print("Details are off")
+
+
+def toggle_print_id_with_person(_):
+    global print_id_with_person
+    print_id_with_person = (print_id_with_person + 1) % 3
+    if print_id_with_person == 0:
+        print("ID will not be shown")
+    elif print_id_with_person == 1:
+        print("Parents ID will be shown")
+    else:
+        print("ID will be shown for all")
 
 
 def _find_by_id(lineage: Lineage, id: int):
@@ -279,8 +352,9 @@ def save_to_file(lineage: Lineage):
     global lineage_modified
     if not lineage_modified:
         print_red("No change since last save")
-        inp = non_empty_input("Do you want to save again (y/n): ")
+        inp = take_input("Do you want to save again [y/N]: ")
         if inp not in ("y", "yes"):
+            print_grey("Not saved, since not required")
             return
 
     filename = (
@@ -364,25 +438,13 @@ def safe_exit(lineage: Lineage):
     global lineage_modified
     if not lineage_modified:
         print_yellow("Exiting...")
-
-        # st = "Closing................"
-        # for i in st:
-        #     sleep(0.05)
-        #     print(i, sep="", end="", flush=True)
-
         exit(0)
 
-    inp = non_empty_input(
-        "You have unsaved data. Do you really want to exit without saving (y/n): "
+    inp = take_input(
+        "You have unsaved data. Do you really want to exit without saving [y/N]: "
     )
     if inp in ("y", "yes"):
         autosave(lineage)
-
-        st = "Closing................"
-        for i in st:
-            sleep(0.05)
-            print(i, sep="", end="", flush=True)
-
         exit(0)
 
     print_red("Exit aborted")
@@ -406,7 +468,7 @@ def shortest_path(lineage: Lineage):
     print_cyan("Distance:", len(sp) - 1)
 
 
-def _helper_no_and_single_parent(lineage: Lineage) -> (set, set):
+def _helper_no_and_one_parent(lineage: Lineage) -> tuple[set, set]:
     """Return set of persons having father and set of persons having mother"""
 
     relations = lineage.all_relations()
@@ -419,7 +481,7 @@ def _helper_no_and_single_parent(lineage: Lineage) -> (set, set):
 
 def no_parent(lineage: Lineage):
     print_heading("PERSONS HAVING NO PARENT")
-    f, m = _helper_no_and_single_parent(lineage)
+    f, m = _helper_no_and_one_parent(lineage)
 
     allp = set(lineage.all_persons())
     no_parent = allp - f.union(m)
@@ -436,7 +498,7 @@ def no_parent(lineage: Lineage):
 
 def one_parent(lineage: Lineage):
     print_heading("PERSONS HAVING SINGLE PARENT")
-    f, m = _helper_no_and_single_parent(lineage)
+    f, m = _helper_no_and_one_parent(lineage)
 
     single_parent = f.union(m) - f.intersection(m)
 
@@ -459,8 +521,9 @@ addp:\t\tAdd parent of a person
 addc:\t\tAdd child of a person
 adds:\t\tAdd spouse of a person
 edit:\t\tEdit name of a person
-show:\t\tFind and show matching person
 find:\t\tFind and show matching person
+td:\t\tToggle details. Whether to show all ancestors
+tid:\t\tToggle ID. Whether to show ID with person
 showall:\tShow all persons in lineage
 showallrel:\tShow all relations in lineage
 sp:\t\tShortest path between two persons
@@ -471,11 +534,12 @@ oneparent:\tPersons whose only one parent is present in lineage
 save:\t\tSave lineage to file
 exit:\t\tExit the lineage prompt
 help:\t\tShow this help
-Press {'<Ctrl>Z then Enter' if os.name == 'nt' else '<Ctrl>D'} in empty input to cancel
+
 Type ID or name directly in the command field to search
+Press {'<Ctrl>Z then Enter' if os.name == 'nt' else '<Ctrl>D'} in empty input to cancel
 """
 
-    new = [7, 13, 14, 19]
+    new = [7, 8]
     deprecated = []
     for i, line in enumerate(help.split("\n"), 1):
         if show_changes and i in new:
@@ -489,14 +553,6 @@ Type ID or name directly in the command field to search
 
     if deprecated:
         print_grey("deprecated commands will be removed from future versions\n")
-
-
-def set_keyboard_interrupt_signal_handler(lineage):
-    def signal_handler(sig, frame):
-        print()
-        safe_exit(lineage)
-
-    signal.signal(signal.SIGINT, signal_handler)
 
 
 def _main():
@@ -524,8 +580,9 @@ def _main():
         "noparent": no_parent,
         "oneparent": one_parent,
         "save": save_to_file,
-        "show": find,
         "find": find,
+        "td": toggle_print_more_details,
+        "tid": toggle_print_id_with_person,
         "showall": all_persons,
         "showallrel": all_relations,
         "sp": shortest_path,
@@ -535,10 +592,9 @@ def _main():
 
     show_help(show_changes=True)
 
-    set_keyboard_interrupt_signal_handler(lineage)
     while True:
         try:
-            command = non_empty_input("# ")
+            command = non_empty_input("# ").strip()
             command_ = command.replace(" ", "").lower()
             if command_ in commands:
                 commands[command_](lineage)
@@ -549,12 +605,12 @@ def _main():
                 else:
                     _find_by_name(lineage, command)
 
-        # except KeyboardInterrupt:
-        #     handled by set_keyboard_interrupt_signal_handler
-
-        #     print_red("\nAborted")
-        #     autosave(lineage)
-        #     exit(0)
+        except KeyboardInterrupt:
+            print()
+            try:
+                safe_exit(lineage)
+            except (KeyboardInterrupt, EOFError):
+                print()
 
         except Exception as e:
             print_red(e)
