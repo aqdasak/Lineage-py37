@@ -4,7 +4,7 @@ from datetime import datetime
 import json
 import os
 from pathlib import Path
-from lineage_aq import Lineage, Person, Relation
+from lineage_aq import Lineage, Person, Relation, InvalidRelationError
 from sys import exit
 from lineage_aq.my_io import (
     input_from,
@@ -61,7 +61,7 @@ def add_new_person(lineage: Lineage):
 
         return list(set(found))
 
-    def do_continue_if_found(name: str) -> bool:
+    def whether_to_continue_if_found(name: str) -> bool:
         same_name_persons = find_same_name_persons(name)
         if same_name_persons:
             print_blue("\nPeople found with same name.")
@@ -79,7 +79,7 @@ def add_new_person(lineage: Lineage):
 
     print_heading("ADD NEW PERSON")
     name = non_empty_input("Input name: ")
-    if not do_continue_if_found(name):
+    if not whether_to_continue_if_found(name):
         return
 
     gender = input_from("Input gender (m/f): ", ("m", "f"))
@@ -124,11 +124,25 @@ def add_parent(lineage: Lineage):
     lineage_modified = True
 
 
-def add_child(lineage: Lineage):
-    print_heading("ADD CHILD")
+def add_children(lineage: Lineage):
+    print_heading("ADD CHILDREN")
     person = lineage.find_person_by_id(int(non_empty_input("Enter ID of person: ")))
-    child = lineage.find_person_by_id(int(non_empty_input("Enter ID of child: ")))
-    person.add_child(child)
+    children = non_empty_input("Enter comma separated IDs of children: ")
+    # Using dict as ordered set
+    children = {i.strip(): "" for i in children.split(",")}
+    children.pop("", None)
+
+    for child_id in children:
+        try:
+            child = lineage.find_person_by_id(int(child_id))
+            if child is None:
+                print_red(f"ID={child_id}: ID is not present")
+            else:
+                person.add_child(child)
+        except InvalidRelationError as e:
+            print_red(f"ID={child_id}:", e)
+        except Exception as e:
+            print_red(e)
     _print_person_details(person)
 
     global lineage_modified
@@ -518,7 +532,7 @@ def show_help(_=None, show_changes=False):
     help = f"""\
 new:\t\tAdd new person
 addp:\t\tAdd parent of a person
-addc:\t\tAdd child of a person
+addc:\t\tAdd children of a person
 adds:\t\tAdd spouse of a person
 edit:\t\tEdit name of a person
 find:\t\tFind and show matching person
@@ -565,6 +579,8 @@ def _main():
     if inp in ("y", "yes"):
         lineage = load_from_file()
 
+    show_help(show_changes=True)
+
     if lineage is None:
         print_yellow("Creating new lineage\n")
         lineage = Lineage()
@@ -572,7 +588,7 @@ def _main():
     commands = {
         "new": add_new_person,
         "addp": add_parent,
-        "addc": add_child,
+        "addc": add_children,
         "adds": add_spouse,
         "edit": edit_name,
         "rmperson": remove_person,
@@ -589,8 +605,6 @@ def _main():
         "exit": safe_exit,
         "help": show_help,
     }
-
-    show_help(show_changes=True)
 
     while True:
         try:
