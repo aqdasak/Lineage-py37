@@ -410,25 +410,24 @@ def load_from_file() -> Lineage | None:
         num_persons = len(data["persons"])
         num_relations = len(data["relations"])
 
-        if num_persons > 0:
-            print_grey(f"   [{num_persons}]", end="")
-
-        if num_relations > 0:
-            print_grey(f"\t[{num_relations}]", end="")
+        print_grey(f"   [{num_persons}]", end="")
+        print_grey(f"\t[{num_relations}]", end="")
 
     def print_all_files(files: list):
         padding = len(str(len(files)))
         print_yellow(" " * (padding - 1), end="")
         print("# ", "Filenames", " " * 23, "Persons  Relations")
 
-        print(f"{1:{padding}d}:", files[0].name, end="")
-        print_num_persons_and_relations(files[0])
-        print_green(" (latest)")
-
-        for i, file in enumerate(files[1:], 2):
+        i = len(files)
+        for file in reversed(files[1:]):
             print(f"{i:{padding}d}:", file.name, end="")
             print_num_persons_and_relations(file)
             print()
+            i -= 1
+
+        print(f"{1:{padding}d}:", files[0].name, end="")
+        print_num_persons_and_relations(files[0])
+        print_green(" (latest)")
 
     path = Path().home() / ".lineage"
     if not (path.exists() and path.is_dir()):
