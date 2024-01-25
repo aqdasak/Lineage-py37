@@ -22,7 +22,7 @@ from lineage_aq.my_io import (
     take_input,
 )
 
-
+LINEAGE_HOME = Path().home() / ".lineage"
 lineage_modified = False
 print_more_details = False
 print_id_with_person = 0  # Possible: 0(Off), 1(Parents only), 2(All)
@@ -354,13 +354,11 @@ def all_relations(lineage: Lineage):
 
 
 def initialize_save_directories():
-    path = Path().home() / ".lineage"
-    if not path.exists():
-        path.mkdir()
+    path = LINEAGE_HOME
+    path.mkdir(parents=True, exist_ok=True)
 
     path = path / "autosave"
-    if not path.exists():
-        path.mkdir()
+    path.mkdir(parents=True, exist_ok=True)
 
 
 def save_to_file(lineage: Lineage):
@@ -373,8 +371,7 @@ def save_to_file(lineage: Lineage):
             return
 
     filename = (
-        Path().home()
-        / f'.lineage/lineage {datetime.now().strftime("%Y-%m-%d %H.%M.%S")}.json'
+        LINEAGE_HOME / f'lineage {datetime.now().strftime("%Y-%m-%d %H.%M.%S")}.json'
     )
     try:
         lineage.save_to_file(filename)
@@ -392,8 +389,8 @@ def autosave(lineage: Lineage):
         return
 
     filename = (
-        Path().home()
-        / f'.lineage/autosave/autosave-lineage {datetime.now().strftime("%Y-%m-%d %H.%M.%S")}.json'
+        LINEAGE_HOME
+        / f'autosave/autosave-lineage {datetime.now().strftime("%Y-%m-%d %H.%M.%S")}.json'
     )
     try:
         lineage.save_to_file(filename)
@@ -430,7 +427,7 @@ def load_from_file() -> Lineage | None:
         print_num_persons_and_relations(files[0])
         print_green(" (latest)")
 
-    path = Path().home() / ".lineage"
+    path = LINEAGE_HOME
     if not (path.exists() and path.is_dir()):
         print_red("Directory not found", path)
         return
@@ -449,6 +446,7 @@ def load_from_file() -> Lineage | None:
 
 
 def safe_exit(lineage: Lineage):
+    save_settings()
     global lineage_modified
     if not lineage_modified:
         print_yellow("Exiting...")
@@ -462,6 +460,36 @@ def safe_exit(lineage: Lineage):
         exit(0)
 
     print_red("Exit aborted")
+
+
+def load_settings():
+    file = LINEAGE_HOME / "settings/settings.json"
+
+    global print_more_details
+    global print_id_with_person
+    try:
+        with open(file) as f:
+            settings = json.load(f)
+            print_more_details = settings["print_more_details"]
+            print_id_with_person = min(settings["print_id_with_person"], 2)
+    except Exception:
+        pass
+
+
+def save_settings():
+    path = LINEAGE_HOME / "settings"
+    path.mkdir(parents=True, exist_ok=True)
+
+    file = path / "settings.json"
+    global print_more_details
+    global print_id_with_person
+
+    with open(file, "w") as f:
+        settings = {
+            "print_more_details": print_more_details,
+            "print_id_with_person": print_id_with_person,
+        }
+        json.dump(settings, f)
 
 
 def shortest_path(lineage: Lineage):
@@ -660,6 +688,7 @@ def _main():
 
 
 def main():
+    load_settings()
     initialize_save_directories()
     try:
         _main()
