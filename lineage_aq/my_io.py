@@ -117,3 +117,64 @@ def print_id_name_in_box(id: str, name: str):
     print_green(name, end=" ")
     print_green(" " * max(i_len - n_len, 0) + "│")
     print_green("\t ╰" + "─" * (max(n_len, i_len) + 2) + "╯")
+
+
+def print_tree(tree: dict[str, dict]):
+    """
+    Print the dict of dict into tree
+
+    Example:
+    --------
+    ```
+    tree = {
+        "foo": {
+            "bar": {"a": {"1": {"2": {}, "3": {}}}, "b": {}},
+            "baz": {},
+            "qux": {"c\nd": {}},
+        },
+    }
+
+    print_tree(tree)
+    ```
+
+    Output:
+    foo
+    ├── bar
+    │   ├── a
+    │   │   └── 1
+    │   │       ├── 2
+    │   │       └── 3
+    │   └── b
+    ├── baz
+    └── qux
+        └── c⏎d
+    """
+    NEWLINE = "⏎"
+    VERTICAL = "│   "
+    HORIZONTAL = "─── "
+    BRANCH = "├── "
+    LAST_BRANCH = "└── "
+    EMPTY = " " * len(BRANCH)
+    LEN = len(BRANCH)
+
+    def replace(st: str) -> str:
+        return (
+            st.replace(BRANCH, VERTICAL)
+            .replace(LAST_BRANCH, EMPTY)
+            .replace(HORIZONTAL, EMPTY)
+        )
+
+    def _print_tree(tree: dict[str, dict | None], st=""):
+        print()
+        if isinstance(tree, dict):
+            st = replace(st) + BRANCH
+
+            for i, (k, v) in enumerate(tree.items(), 1):
+                if i == len(tree):
+                    st = replace(st[:-LEN]) + LAST_BRANCH
+
+                print(st[LEN:], end="")
+                print(k.replace("\n", NEWLINE), end="")
+                _print_tree(v, st)
+
+    _print_tree(tree)

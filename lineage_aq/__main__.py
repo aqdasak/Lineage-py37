@@ -16,6 +16,7 @@ from lineage_aq.my_io import (
     print_grey,
     print_heading,
     print_id_name_in_box,
+    print_tree,
     print_yellow,
     print_red,
     take_input,
@@ -526,6 +527,31 @@ def one_parent(lineage: Lineage):
     print_cyan("Total persons:", len(single_parent))
 
 
+def show_tree(lineage: Lineage):
+    def person_repr(person: Person) -> str:
+        if print_id_with_person == 2:
+            return f"P{person.id}({person.name})"
+        else:
+            return person.name
+
+    def _build_tree(person: Person) -> dict:
+        tree = {}
+        daughters = sorted(person.daughters, key=lambda p: p.id)
+        for daughter in daughters:
+            tree[person_repr(daughter)] = {}
+
+        sons = sorted(person.sons, key=lambda p: p.id)
+        for son in sons:
+            tree[person_repr(son)] = _build_tree(son)
+        return tree
+
+    print_heading("PRINT TREE")
+    person = lineage.find_person_by_id(int(non_empty_input("Enter ID of person: ")))
+
+    tree = {person_repr(person): _build_tree(person)}
+    print_tree(tree)
+
+
 def show_help(_=None, show_changes=False):
     print_yellow("USAGE: Type following commands to do respective action")
     help = f"""\
@@ -535,15 +561,16 @@ addc:\t\tAdd children of a person
 adds:\t\tAdd spouse of a person
 edit:\t\tEdit name of a person
 find:\t\tFind and show matching person
+tree:\t\tPrint tree of a person
 td:\t\tToggle details. Whether to show all ancestors
 tid:\t\tToggle ID. Whether to show ID with person
-showall:\tShow all persons in lineage
-showallrel:\tShow all relations in lineage
 sp:\t\tShortest path between two persons
 rmrel:\t\tRemove relation between two persons
 rmperson:\tRemove person from lineage
 noparent:\tPersons whose no parent is present in lineage
 oneparent:\tPersons whose only one parent is present in lineage
+showall:\tShow all persons in lineage
+showallrel:\tShow all relations in lineage
 save:\t\tSave lineage to file
 exit:\t\tExit the lineage prompt
 help:\t\tShow this help
@@ -552,7 +579,7 @@ Type ID or name directly in the command field to search
 Press {'<Ctrl>Z then Enter' if os.name == 'nt' else '<Ctrl>D'} in empty input to cancel
 """
 
-    new = [7, 8]
+    new = [7, 8, 9]
     deprecated = []
     for i, line in enumerate(help.split("\n"), 1):
         if show_changes and i in new:
@@ -592,15 +619,16 @@ def _main():
         "edit": edit_name,
         "rmperson": remove_person,
         "rmrel": remove_relation,
-        "noparent": no_parent,
-        "oneparent": one_parent,
-        "save": save_to_file,
         "find": find,
+        "tree": show_tree,
         "td": toggle_print_more_details,
         "tid": toggle_print_id_with_person,
+        "sp": shortest_path,
+        "noparent": no_parent,
+        "oneparent": one_parent,
         "showall": all_persons,
         "showallrel": all_relations,
-        "sp": shortest_path,
+        "save": save_to_file,
         "exit": safe_exit,
         "help": show_help,
     }
