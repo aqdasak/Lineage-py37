@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lineage-aq"
-version = "1.1.1"
+version = "1.2.0"
 description = "Interactive command line interface to create and edit lineage of families."
 authors = ["Aqdas Ahmad Khan <aqdasak@gmail.com>"]
 readme = "README.md"
