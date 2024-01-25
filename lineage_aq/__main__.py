@@ -4,7 +4,7 @@ from datetime import datetime
 import json
 import os
 from pathlib import Path
-from lineage_aq import Lineage, Person, Relation
+from lineage_aq import Lineage, Person, Relation, InvalidRelationError
 from sys import exit
 from lineage_aq.my_io import (
     input_from,
@@ -16,12 +16,13 @@ from lineage_aq.my_io import (
     print_grey,
     print_heading,
     print_id_name_in_box,
+    print_tree,
     print_yellow,
     print_red,
     take_input,
 )
 
-
+LINEAGE_HOME = Path().home() / ".lineage"
 lineage_modified = False
 print_more_details = False
 print_id_with_person = 0  # Possible: 0(Off), 1(Parents only), 2(All)
@@ -61,7 +62,7 @@ def add_new_person(lineage: Lineage):
 
         return list(set(found))
 
-    def do_continue_if_found(name: str) -> bool:
+    def whether_to_continue_if_found(name: str) -> bool:
         same_name_persons = find_same_name_persons(name)
         if same_name_persons:
             print_blue("\nPeople found with same name.")
@@ -79,7 +80,7 @@ def add_new_person(lineage: Lineage):
 
     print_heading("ADD NEW PERSON")
     name = non_empty_input("Input name: ")
-    if not do_continue_if_found(name):
+    if not whether_to_continue_if_found(name):
         return
 
     gender = input_from("Input gender (m/f): ", ("m", "f"))
@@ -124,11 +125,25 @@ def add_parent(lineage: Lineage):
     lineage_modified = True
 
 
-def add_child(lineage: Lineage):
-    print_heading("ADD CHILD")
+def add_children(lineage: Lineage):
+    print_heading("ADD CHILDREN")
     person = lineage.find_person_by_id(int(non_empty_input("Enter ID of person: ")))
-    child = lineage.find_person_by_id(int(non_empty_input("Enter ID of child: ")))
-    person.add_child(child)
+    children = non_empty_input("Enter comma separated IDs of children: ")
+    # Using dict as ordered set
+    children = {i.strip(): "" for i in children.split(",")}
+    children.pop("", None)
+
+    for child_id in children:
+        try:
+            child = lineage.find_person_by_id(int(child_id))
+            if child is None:
+                print_red(f"ID={child_id}: ID is not present")
+            else:
+                person.add_child(child)
+        except InvalidRelationError as e:
+            print_red(f"ID={child_id}:", e)
+        except Exception as e:
+            print_red(e)
     _print_person_details(person)
 
     global lineage_modified
@@ -339,13 +354,11 @@ def all_relations(lineage: Lineage):
 
 
 def initialize_save_directories():
-    path = Path().home() / ".lineage"
-    if not path.exists():
-        path.mkdir()
+    path = LINEAGE_HOME
+    path.mkdir(parents=True, exist_ok=True)
 
     path = path / "autosave"
-    if not path.exists():
-        path.mkdir()
+    path.mkdir(parents=True, exist_ok=True)
 
 
 def save_to_file(lineage: Lineage):
@@ -358,8 +371,7 @@ def save_to_file(lineage: Lineage):
             return
 
     filename = (
-        Path().home()
-        / f'.lineage/lineage {datetime.now().strftime("%Y-%m-%d %H.%M.%S")}.json'
+        LINEAGE_HOME / f'lineage {datetime.now().strftime("%Y-%m-%d %H.%M.%S")}.json'
     )
     try:
         lineage.save_to_file(filename)
@@ -377,8 +389,8 @@ def autosave(lineage: Lineage):
         return
 
     filename = (
-        Path().home()
-        / f'.lineage/autosave/autosave-lineage {datetime.now().strftime("%Y-%m-%d %H.%M.%S")}.json'
+        LINEAGE_HOME
+        / f'autosave/autosave-lineage {datetime.now().strftime("%Y-%m-%d %H.%M.%S")}.json'
     )
     try:
         lineage.save_to_file(filename)
@@ -396,27 +408,26 @@ def load_from_file() -> Lineage | None:
         num_persons = len(data["persons"])
         num_relations = len(data["relations"])
 
-        if num_persons > 0:
-            print_grey(f"   [{num_persons}]", end="")
-
-        if num_relations > 0:
-            print_grey(f"\t[{num_relations}]", end="")
+        print_grey(f"   [{num_persons}]", end="")
+        print_grey(f"\t[{num_relations}]", end="")
 
     def print_all_files(files: list):
         padding = len(str(len(files)))
         print_yellow(" " * (padding - 1), end="")
         print("# ", "Filenames", " " * 23, "Persons  Relations")
 
+        i = len(files)
+        for file in reversed(files[1:]):
+            print(f"{i:{padding}d}:", file.name, end="")
+            print_num_persons_and_relations(file)
+            print()
+            i -= 1
+
         print(f"{1:{padding}d}:", files[0].name, end="")
         print_num_persons_and_relations(files[0])
         print_green(" (latest)")
 
-        for i, file in enumerate(files[1:], 2):
-            print(f"{i:{padding}d}:", file.name, end="")
-            print_num_persons_and_relations(file)
-            print()
-
-    path = Path().home() / ".lineage"
+    path = LINEAGE_HOME
     if not (path.exists() and path.is_dir()):
         print_red("Directory not found", path)
         return
@@ -435,6 +446,7 @@ def load_from_file() -> Lineage | None:
 
 
 def safe_exit(lineage: Lineage):
+    save_settings()
     global lineage_modified
     if not lineage_modified:
         print_yellow("Exiting...")
@@ -448,6 +460,36 @@ def safe_exit(lineage: Lineage):
         exit(0)
 
     print_red("Exit aborted")
+
+
+def load_settings():
+    file = LINEAGE_HOME / "settings/settings.json"
+
+    global print_more_details
+    global print_id_with_person
+    try:
+        with open(file) as f:
+            settings = json.load(f)
+            print_more_details = settings["print_more_details"]
+            print_id_with_person = min(settings["print_id_with_person"], 2)
+    except Exception:
+        pass
+
+
+def save_settings():
+    path = LINEAGE_HOME / "settings"
+    path.mkdir(parents=True, exist_ok=True)
+
+    file = path / "settings.json"
+    global print_more_details
+    global print_id_with_person
+
+    with open(file, "w") as f:
+        settings = {
+            "print_more_details": print_more_details,
+            "print_id_with_person": print_id_with_person,
+        }
+        json.dump(settings, f)
 
 
 def shortest_path(lineage: Lineage):
@@ -513,24 +555,50 @@ def one_parent(lineage: Lineage):
     print_cyan("Total persons:", len(single_parent))
 
 
+def show_tree(lineage: Lineage):
+    def person_repr(person: Person) -> str:
+        if print_id_with_person == 2:
+            return f"P{person.id}({person.name})"
+        else:
+            return person.name
+
+    def _build_tree(person: Person) -> dict:
+        tree = {}
+        daughters = sorted(person.daughters, key=lambda p: p.id)
+        for daughter in daughters:
+            tree[person_repr(daughter)] = {}
+
+        sons = sorted(person.sons, key=lambda p: p.id)
+        for son in sons:
+            tree[person_repr(son)] = _build_tree(son)
+        return tree
+
+    print_heading("PRINT TREE")
+    person = lineage.find_person_by_id(int(non_empty_input("Enter ID of person: ")))
+
+    tree = {person_repr(person): _build_tree(person)}
+    print_tree(tree)
+
+
 def show_help(_=None, show_changes=False):
     print_yellow("USAGE: Type following commands to do respective action")
     help = f"""\
 new:\t\tAdd new person
 addp:\t\tAdd parent of a person
-addc:\t\tAdd child of a person
+addc:\t\tAdd children of a person
 adds:\t\tAdd spouse of a person
 edit:\t\tEdit name of a person
 find:\t\tFind and show matching person
+tree:\t\tPrint tree of a person
 td:\t\tToggle details. Whether to show all ancestors
 tid:\t\tToggle ID. Whether to show ID with person
-showall:\tShow all persons in lineage
-showallrel:\tShow all relations in lineage
 sp:\t\tShortest path between two persons
 rmrel:\t\tRemove relation between two persons
 rmperson:\tRemove person from lineage
 noparent:\tPersons whose no parent is present in lineage
 oneparent:\tPersons whose only one parent is present in lineage
+showall:\tShow all persons in lineage
+showallrel:\tShow all relations in lineage
 save:\t\tSave lineage to file
 exit:\t\tExit the lineage prompt
 help:\t\tShow this help
@@ -539,7 +607,7 @@ Type ID or name directly in the command field to search
 Press {'<Ctrl>Z then Enter' if os.name == 'nt' else '<Ctrl>D'} in empty input to cancel
 """
 
-    new = [7, 8]
+    new = [7, 8, 9]
     deprecated = []
     for i, line in enumerate(help.split("\n"), 1):
         if show_changes and i in new:
@@ -565,6 +633,8 @@ def _main():
     if inp in ("y", "yes"):
         lineage = load_from_file()
 
+    show_help(show_changes=True)
+
     if lineage is None:
         print_yellow("Creating new lineage\n")
         lineage = Lineage()
@@ -572,25 +642,24 @@ def _main():
     commands = {
         "new": add_new_person,
         "addp": add_parent,
-        "addc": add_child,
+        "addc": add_children,
         "adds": add_spouse,
         "edit": edit_name,
         "rmperson": remove_person,
         "rmrel": remove_relation,
-        "noparent": no_parent,
-        "oneparent": one_parent,
-        "save": save_to_file,
         "find": find,
+        "tree": show_tree,
         "td": toggle_print_more_details,
         "tid": toggle_print_id_with_person,
+        "sp": shortest_path,
+        "noparent": no_parent,
+        "oneparent": one_parent,
         "showall": all_persons,
         "showallrel": all_relations,
-        "sp": shortest_path,
+        "save": save_to_file,
         "exit": safe_exit,
         "help": show_help,
     }
-
-    show_help(show_changes=True)
 
     while True:
         try:
@@ -619,6 +688,7 @@ def _main():
 
 
 def main():
+    load_settings()
     initialize_save_directories()
     try:
         _main()

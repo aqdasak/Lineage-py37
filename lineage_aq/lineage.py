@@ -7,6 +7,10 @@ from networkx import DiGraph
 from enum import Enum, auto
 
 
+class InvalidRelationError(ValueError):
+    pass
+
+
 class Relation(Enum):
     FATHER = auto()
     MOTHER = auto()
@@ -96,9 +100,11 @@ class Person:
 
     def __add_relation(self, to: Person, relation: Relation) -> None:
         if self is to:
-            raise ValueError("Can't be related to self")
+            raise InvalidRelationError("Can't be related to self")
         if self.relation_with(to) is not None:
-            raise ValueError(f"Relation is already present ({self.relation_with(to)})")
+            raise InvalidRelationError(
+                f"Relation is already present ({self.relation_with(to)})"
+            )
 
         self.__graph.add_edges_from([(self, to, {Relation: relation})])
         self.__relatives_dict[relation].append(to)
@@ -110,7 +116,7 @@ class Person:
                 person1.__relatives_dict[relation].remove(person2)
                 person1.__graph.remove_edge(person1, person2)
             else:
-                raise Exception("Relation not present")
+                raise InvalidRelationError("Relation not present")
 
         remove_from_one_side(self, relative)
         remove_from_one_side(relative, self)
@@ -137,21 +143,30 @@ class Person:
         child_rel = Relation.SON if child.__gender == "m" else Relation.DAUGHTER
         parent_rel = Relation.FATHER if self.__gender == "m" else Relation.MOTHER
 
+        if self.relation_with(child) is not None:
+            raise InvalidRelationError(
+                f"Relation is already present ({self.relation_with(child)})"
+            )
+
         if len(child.relatives_dict()[parent_rel]) >= 1:
-            raise Exception("Can't have multiple father or mother values")
+            raise InvalidRelationError("Can't have multiple father or mother values")
 
         if parent_rel == Relation.FATHER:
             if (
                 child.mother is not None
                 and self.relation_with(child.mother) != Relation.WIFE
             ):
-                raise ValueError(f"{self} and {child.mother} are not spouse")
+                raise InvalidRelationError(
+                    f"{self} and {child.mother} are not spouse. {child.mother} is mother of {child}"
+                )
         else:
             if (
                 child.father is not None
                 and self.relation_with(child.father) != Relation.HUSBAND
             ):
-                raise ValueError(f"{child.father} and {self} are not spouse")
+                raise InvalidRelationError(
+                    f"{child.father} and {self} are not spouse. {child.father} is father of {child}"
+                )
 
         self.__add_relation(child, child_rel)
         child.__add_relation(self, parent_rel)
