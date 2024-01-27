@@ -1,4 +1,8 @@
+from __future__ import annotations
+from typing import Callable
 from colorama import Fore as c, Style
+
+from lineage_aq import Person
 
 
 def arg_parse(*args):
@@ -119,12 +123,25 @@ def print_id_name_in_box(id: str, name: str):
     print_green("\t ╰" + "─" * (max(n_len, i_len) + 2) + "╯")
 
 
-def print_tree(tree: dict[str, dict]):
+def print_tree(
+    tree: dict[Person, dict],
+    occurance: dict[Person, int] = {},
+    person_repr: Callable[[Person], str] = repr,
+):
     """
     Print the dict of dict into tree
 
-    Example:
-    --------
+    Parameters
+    ----------
+    tree: dict[Person, dict]
+        recursive dict containing parent as key and dict containing children
+    occurance: dict[Person, int]
+        contains the number of occurances of any person in the tree
+    person_repr: Callable[[Person], str]
+        function which represent string representation of the person to be printed
+
+    Example
+    -------
     ```
     tree = {
         "foo": {
@@ -149,7 +166,6 @@ def print_tree(tree: dict[str, dict]):
     └── qux
         └── c⏎d
     """
-    NEWLINE = "⏎"
     VERTICAL = "│   "
     HORIZONTAL = "─── "
     BRANCH = "├── "
@@ -164,17 +180,27 @@ def print_tree(tree: dict[str, dict]):
             .replace(HORIZONTAL, EMPTY)
         )
 
-    def _print_tree(tree: dict[str, dict | None], st=""):
+    def _print_tree(tree: dict[Person, dict], connector=""):
         print()
         if isinstance(tree, dict):
-            st = replace(st) + BRANCH
-
-            for i, (k, v) in enumerate(tree.items(), 1):
+            connector = replace(connector) + BRANCH
+            for i, (person, subtree) in enumerate(tree.items(), 1):
                 if i == len(tree):
-                    st = replace(st[:-LEN]) + LAST_BRANCH
+                    connector = replace(connector[:-LEN]) + LAST_BRANCH
 
-                print(st[LEN:], end="")
-                print(k.replace("\n", NEWLINE), end="")
-                _print_tree(v, st)
+                print(connector[LEN:], end="")
+                if person in duplicates:
+                    if duplicates[person]:
+                        print_grey(person_repr(person), end="")
+                        _print_tree(subtree, connector + c.LIGHTBLACK_EX)
+                    else:
+                        print(person_repr(person), end="")
+                        duplicates[person] = True
+                        _print_tree(subtree, connector)
+                else:
+                    print(person_repr(person), end="")
+                    _print_tree(subtree, connector)
 
+    # When False for first time print it in regular color, then print in grey for all occurances
+    duplicates = {k: False for k, v in occurance.items() if v > 1}
     _print_tree(tree)

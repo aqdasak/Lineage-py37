@@ -562,22 +562,25 @@ def show_tree(lineage: Lineage):
         else:
             return person.name
 
-    def _build_tree(person: Person) -> dict:
+    def _build_tree(person: Person) -> dict[Person, dict]:
         tree = {}
-        daughters = sorted(person.daughters, key=lambda p: p.id)
-        for daughter in daughters:
-            tree[person_repr(daughter)] = {}
-
-        sons = sorted(person.sons, key=lambda p: p.id)
-        for son in sons:
-            tree[person_repr(son)] = _build_tree(son)
+        children = sorted(person.children, key=lambda p: p.id)
+        for child in children:
+            occurance[child] += 1
+            tree[child] = _build_tree(child)
         return tree
 
     print_heading("PRINT TREE")
-    person = lineage.find_person_by_id(int(non_empty_input("Enter ID of person: ")))
+    p_id = int(non_empty_input("Enter ID of person: "))
+    person = lineage.find_person_by_id(p_id)
 
-    tree = {person_repr(person): _build_tree(person)}
-    print_tree(tree)
+    occurance = defaultdict(int)
+    if person is not None:
+        tree = {person: _build_tree(person)}
+        print_tree(tree, occurance, person_repr)
+
+    else:
+        print_red(f"ID {p_id} is not present")
 
 
 def show_help(_=None, show_changes=False):
