@@ -26,6 +26,8 @@ LINEAGE_HOME = Path().home() / ".lineage"
 lineage_modified = False
 print_more_details = False
 print_id_with_person = 0  # Possible: 0(Off), 1(Parents only), 2(All)
+# Possible: 0(Expand female only), 1(Expand male only), 2(Complete)
+print_expanded_tree = 2
 
 
 def add_new_person(lineage: Lineage):
@@ -313,6 +315,17 @@ def toggle_print_id_with_person(_):
         print("ID will be shown for all")
 
 
+def toggle_print_expanded_tree(_):
+    global print_expanded_tree
+    print_expanded_tree = (print_expanded_tree + 1) % 3
+    if print_expanded_tree == 0:
+        print("Only females will be expanded now")
+    elif print_expanded_tree == 1:
+        print("Only males will be expanded now")
+    else:
+        print("Complete tree will be expanded now")
+
+
 def _find_by_id(lineage: Lineage, id: int):
     person = lineage.find_person_by_id(id)
     if person:
@@ -467,11 +480,13 @@ def load_settings():
 
     global print_more_details
     global print_id_with_person
+    global print_expanded_tree
     try:
         with open(file) as f:
             settings = json.load(f)
             print_more_details = settings["print_more_details"]
             print_id_with_person = min(settings["print_id_with_person"], 2)
+            print_expanded_tree = min(settings["print_expanded_tree"], 2)
     except Exception:
         pass
 
@@ -483,11 +498,13 @@ def save_settings():
     file = path / "settings.json"
     global print_more_details
     global print_id_with_person
+    global print_expanded_tree
 
     with open(file, "w") as f:
         settings = {
             "print_more_details": print_more_details,
             "print_id_with_person": print_id_with_person,
+            "print_expanded_tree": print_expanded_tree,
         }
         json.dump(settings, f)
 
@@ -562,12 +579,36 @@ def show_tree(lineage: Lineage):
         else:
             return person.name
 
-    def _build_tree(person: Person) -> dict[Person, dict]:
+    def _build_complete_tree(person: Person) -> dict[Person, dict]:
         tree = {}
         children = sorted(person.children, key=lambda p: p.id)
         for child in children:
             occurance[child] += 1
-            tree[child] = _build_tree(child)
+            tree[child] = _build_complete_tree(child)
+        return tree
+
+    def _build_male_expanded_tree(person: Person) -> dict[Person, dict]:
+        tree = {}
+        daughters = sorted(person.daughters, key=lambda p: p.id)
+        for daughter in daughters:
+            tree[daughter] = {}
+
+        sons = sorted(person.sons, key=lambda p: p.id)
+        for son in sons:
+            occurance[son] += 1
+            tree[son] = _build_male_expanded_tree(son)
+        return tree
+
+    def _build_female_expanded_tree(person: Person) -> dict[Person, dict]:
+        tree = {}
+        sons = sorted(person.sons, key=lambda p: p.id)
+        for son in sons:
+            tree[son] = {}
+
+        daughters = sorted(person.daughters, key=lambda p: p.id)
+        for daughter in daughters:
+            occurance[daughter] += 1
+            tree[daughter] = _build_female_expanded_tree(daughter)
         return tree
 
     print_heading("PRINT TREE")
@@ -576,7 +617,14 @@ def show_tree(lineage: Lineage):
 
     occurance = defaultdict(int)
     if person is not None:
-        tree = {person: _build_tree(person)}
+        if print_expanded_tree == 0:
+            tree = {person: _build_female_expanded_tree(person)}
+            print_blue("\nFemale expanded tree")
+        elif print_expanded_tree == 1:
+            tree = {person: _build_male_expanded_tree(person)}
+            print_blue("\nMale expanded tree")
+        else:
+            tree = {person: _build_complete_tree(person)}
         print_tree(tree, occurance, person_repr)
 
     else:
@@ -595,6 +643,7 @@ find:\t\tFind and show matching person
 tree:\t\tPrint tree of a person
 td:\t\tToggle details. Whether to show all ancestors
 tid:\t\tToggle ID. Whether to show ID with person
+texp:\t\tToggle expansion. Control the expansion of tree
 sp:\t\tShortest path between two persons
 rmrel:\t\tRemove relation between two persons
 rmperson:\tRemove person from lineage
@@ -610,7 +659,7 @@ Type ID or name directly in the command field to search
 Press {'<Ctrl>Z then Enter' if os.name == 'nt' else '<Ctrl>D'} in empty input to cancel
 """
 
-    new = [7, 8, 9]
+    new = [7, 8, 9, 10]
     deprecated = []
     for i, line in enumerate(help.split("\n"), 1):
         if show_changes and i in new:
@@ -654,6 +703,7 @@ def _main():
         "tree": show_tree,
         "td": toggle_print_more_details,
         "tid": toggle_print_id_with_person,
+        "texp": toggle_print_expanded_tree,
         "sp": shortest_path,
         "noparent": no_parent,
         "oneparent": one_parent,
