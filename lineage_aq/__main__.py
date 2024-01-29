@@ -4,6 +4,7 @@ from datetime import datetime
 import json
 import os
 from pathlib import Path
+from typing import Callable
 from lineage_aq import Lineage, Person, Relation, InvalidRelationError
 from sys import exit
 from lineage_aq.my_io import (
@@ -32,6 +33,33 @@ config = {
     "print_expanded_tree": 2,
     "print_spouse_in_tree": True,
 }
+
+
+def commands() -> dict[Callable, str]:
+    return {
+        add_new_person: "new",
+        add_parent: "addp",
+        add_children: "addc",
+        add_spouse: "adds",
+        edit_name: "edit",
+        remove_person: "rmperson",
+        remove_relation: "rmrel",
+        find: "find",
+        show_tree: "tree",
+        toggle_print_all_ancestors: "ta",
+        toggle_print_id_with_person: "tid",
+        toggle_print_id_with_parent: "tpid",
+        toggle_print_expanded_tree: "texp",
+        toggle_print_spouse_in_tree: "ts",
+        shortest_path: "sp",
+        no_parent: "noparent",
+        one_parent: "oneparent",
+        all_persons: "showall",
+        all_relations: "showallrel",
+        save_to_file: "save",
+        safe_exit: "exit",
+        show_help: "help",
+    }
 
 
 def person_repr(person: Person, parent=False) -> str:
@@ -294,39 +322,56 @@ def _print_person_details(person: Person):
         print_person(sister)
 
 
-def toggle_print_more_details(_):
+def toggle_print_all_ancestors(_):
     global config
     config["print_all_ancestors"] = not config["print_all_ancestors"]
+
+    command = commands()[toggle_print_all_ancestors]
     if config["print_all_ancestors"]:
+        print_blue(f"{command}=ON")
         print("Ancestors will be shown")
     else:
+        print_blue(f"{command}=OFF")
         print("Ancestors will not be shown")
 
 
 def toggle_print_id_with_person(_):
     global config
     config["print_id_with_person"] = not config["print_id_with_person"]
+
+    command = commands()[toggle_print_id_with_person]
     if config["print_id_with_person"]:
+        print_blue(f"{command}=ON")
         print("ID will be shown for all")
     else:
+        print_blue(f"{command}=OFF")
         print("ID will not be shown")
 
 
 def toggle_print_id_with_parent(_):
     global config
     config["print_id_with_parent"] = not config["print_id_with_parent"]
+
+    command = commands()[toggle_print_id_with_parent]
     if config["print_id_with_parent"]:
+        print_blue(f"{command}=ON")
         print("Parents ID will be shown")
     else:
-        print("Parents ID will not be shown, if tid is off")
+        print_blue(f"{command}=OFF")
+        tid = commands()[toggle_print_id_with_person]
+        print(f"Parents ID will not be shown, if {tid} is off")
 
 
 def toggle_print_spouse_in_tree(_):
     global config
     config["print_spouse_in_tree"] = not config["print_spouse_in_tree"]
+
+    command = commands()[toggle_print_spouse_in_tree]
     if config["print_spouse_in_tree"]:
+        print_blue(f"{command}=ON")
         print("Spouse will be shown in tree")
     else:
+        print_blue(f"{command}=OFF")
         print("Spouse will not be shown in tree")
 
 
@@ -334,11 +379,16 @@ def toggle_print_expanded_tree(_):
     global config
 
     config["print_expanded_tree"] = (config["print_expanded_tree"] + 1) % 3
+
+    command = commands()[toggle_print_expanded_tree]
     if config["print_expanded_tree"] == 0:
+        print_blue(f"{command}=FEMALE")
         print("Only females in tree will be expanded now")
     elif config["print_expanded_tree"] == 1:
+        print_blue(f"{command}=MALE")
         print("Only males in tree will be expanded now")
     else:
+        print_blue(f"{command}=ALL")
         print("Complete tree will be expanded now")
 
 
@@ -703,37 +753,14 @@ def _main():
         print_yellow("Creating new lineage\n")
         lineage = Lineage()
 
-    commands = {
-        "new": add_new_person,
-        "addp": add_parent,
-        "addc": add_children,
-        "adds": add_spouse,
-        "edit": edit_name,
-        "rmperson": remove_person,
-        "rmrel": remove_relation,
-        "find": find,
-        "tree": show_tree,
-        "ta": toggle_print_more_details,
-        "tid": toggle_print_id_with_person,
-        "tpid": toggle_print_id_with_parent,
-        "texp": toggle_print_expanded_tree,
-        "ts": toggle_print_spouse_in_tree,
-        "sp": shortest_path,
-        "noparent": no_parent,
-        "oneparent": one_parent,
-        "showall": all_persons,
-        "showallrel": all_relations,
-        "save": save_to_file,
-        "exit": safe_exit,
-        "help": show_help,
-    }
+    commands_fn = {v: k for k, v in commands().items()}
 
     while True:
         try:
             command = non_empty_input("# ").strip()
             command_ = command.replace(" ", "").lower()
-            if command_ in commands:
-                commands[command_](lineage)
+            if command_ in commands_fn:
+                commands_fn[command_](lineage)
             else:
                 print_heading("FIND PERSON")
                 if command.isdigit():
