@@ -24,10 +24,21 @@ from lineage_aq.my_io import (
 
 LINEAGE_HOME = Path().home() / ".lineage"
 lineage_modified = False
-print_more_details = False
-print_id_with_person = 0  # Possible: 0(Off), 1(Parents only), 2(All)
-# Possible: 0(Expand female only), 1(Expand male only), 2(Complete)
-print_expanded_tree = 2
+config = {
+    "print_all_ancestors": False,
+    "print_id_with_person": False,
+    "print_id_with_parent": False,
+    # Possible: 0(Expand female only), 1(Expand male only), 2(Complete)
+    "print_expanded_tree": 2,
+    "print_spouse_in_tree": True,
+}
+
+
+def person_repr(person: Person, parent=False) -> str:
+    if config["print_id_with_person"] or (config["print_id_with_parent"] and parent):
+        return f"P{person.id}({person.name})"
+    else:
+        return person.name
 
 
 def add_new_person(lineage: Lineage):
@@ -209,13 +220,7 @@ def _print_person_details(person: Person):
                 print_person(p, end=", ")
             print_person(person[-1])
         else:
-            global print_id_with_person
-            if print_id_with_person == 2:
-                print_cyan(f"P{person.id}({person.name})", end=end)
-            else:
-                print_cyan(person.name, end=end)
-
-    global print_more_details
+            print_cyan(person_repr(person), end=end)
 
     father = person.father
     mother = person.mother
@@ -226,12 +231,9 @@ def _print_person_details(person: Person):
 
     if father:
         print_blue("Father:\t ", end="")
-        if print_id_with_person == 1:
-            print_cyan(f"P{father.id}({father.name})", end="")
-        else:
-            print_person(father, end="")
+        print_cyan(person_repr(father, parent=True), end="")
 
-        if print_more_details:
+        if config["print_all_ancestors"]:
             p = father.father
             while p:
                 print_cyan(" -> ", end="")
@@ -239,18 +241,15 @@ def _print_person_details(person: Person):
                 p = p.father
         print()
 
-    if print_more_details and father and mother:
+    if config["print_all_ancestors"] and father and mother:
         # Space to reduce clutter
         print()
 
     if mother:
         print_blue("Mother:\t ", end="")
-        if print_id_with_person == 1:
-            print_cyan(f"P{mother.id}({mother.name})", end="")
-        else:
-            print_person(mother, end="")
+        print_cyan(person_repr(mother, parent=True), end="")
 
-        if print_more_details:
+        if config["print_all_ancestors"]:
             p = mother.father
             while p:
                 print_cyan(" -> ", end="")
@@ -296,32 +295,49 @@ def _print_person_details(person: Person):
 
 
 def toggle_print_more_details(_):
-    global print_more_details
-    print_more_details = not print_more_details
-    if print_more_details:
-        print("Details are on")
+    global config
+    config["print_all_ancestors"] = not config["print_all_ancestors"]
+    if config["print_all_ancestors"]:
+        print("Ancestors will be shown")
     else:
-        print("Details are off")
+        print("Ancestors will not be shown")
 
 
 def toggle_print_id_with_person(_):
-    global print_id_with_person
-    print_id_with_person = (print_id_with_person + 1) % 3
-    if print_id_with_person == 0:
+    global config
+    config["print_id_with_person"] = not config["print_id_with_person"]
+    if config["print_id_with_person"]:
+        print("ID will be shown for all")
+    else:
         print("ID will not be shown")
-    elif print_id_with_person == 1:
+
+
+def toggle_print_id_with_parent(_):
+    global config
+    config["print_id_with_parent"] = not config["print_id_with_parent"]
+    if config["print_id_with_parent"]:
         print("Parents ID will be shown")
     else:
-        print("ID will be shown for all")
+        print("Parents ID will not be shown, if tid is off")
+
+
+def toggle_print_spouse_in_tree(_):
+    global config
+    config["print_spouse_in_tree"] = not config["print_spouse_in_tree"]
+    if config["print_spouse_in_tree"]:
+        print("Spouse will be shown in tree")
+    else:
+        print("Spouse will not be shown in tree")
 
 
 def toggle_print_expanded_tree(_):
-    global print_expanded_tree
-    print_expanded_tree = (print_expanded_tree + 1) % 3
-    if print_expanded_tree == 0:
-        print("Only females will be expanded now")
-    elif print_expanded_tree == 1:
-        print("Only males will be expanded now")
+    global config
+
+    config["print_expanded_tree"] = (config["print_expanded_tree"] + 1) % 3
+    if config["print_expanded_tree"] == 0:
+        print("Only females in tree will be expanded now")
+    elif config["print_expanded_tree"] == 1:
+        print("Only males in tree will be expanded now")
     else:
         print("Complete tree will be expanded now")
 
@@ -478,15 +494,20 @@ def safe_exit(lineage: Lineage):
 def load_settings():
     file = LINEAGE_HOME / "settings/settings.json"
 
-    global print_more_details
-    global print_id_with_person
-    global print_expanded_tree
+    global config
     try:
         with open(file) as f:
-            settings = json.load(f)
-            print_more_details = settings["print_more_details"]
-            print_id_with_person = min(settings["print_id_with_person"], 2)
-            print_expanded_tree = min(settings["print_expanded_tree"], 2)
+            config.update(json.load(f))
+            if not isinstance(config.get("print_all_ancestors"), bool):
+                config["print_all_ancestors"] = False
+            if not isinstance(config.get("print_id_with_person"), bool):
+                config["print_id_with_person"] = False
+            if not isinstance(config.get("print_id_with_parent"), bool):
+                config["print_id_with_parent"] = False
+            if not 0 <= config.get("print_expanded_tree") <= 2:
+                config["print_expanded_tree"] = 2
+            if not isinstance(config.get("print_spouse_in_tree"), bool):
+                config["print_spouse_in_tree"] = True
     except Exception:
         pass
 
@@ -496,17 +517,9 @@ def save_settings():
     path.mkdir(parents=True, exist_ok=True)
 
     file = path / "settings.json"
-    global print_more_details
-    global print_id_with_person
-    global print_expanded_tree
 
     with open(file, "w") as f:
-        settings = {
-            "print_more_details": print_more_details,
-            "print_id_with_person": print_id_with_person,
-            "print_expanded_tree": print_expanded_tree,
-        }
-        json.dump(settings, f)
+        json.dump(config, f)
 
 
 def shortest_path(lineage: Lineage):
@@ -573,12 +586,6 @@ def one_parent(lineage: Lineage):
 
 
 def show_tree(lineage: Lineage):
-    def person_repr(person: Person) -> str:
-        if print_id_with_person == 2:
-            return f"P{person.id}({person.name})"
-        else:
-            return person.name
-
     def _build_complete_tree(person: Person) -> dict[Person, dict]:
         tree = {}
         children = sorted(person.children, key=lambda p: p.id)
@@ -617,23 +624,33 @@ def show_tree(lineage: Lineage):
 
     occurance = defaultdict(int)
     if person is not None:
-        if print_expanded_tree == 0:
+        if config["print_expanded_tree"] == 0:
             tree = {person: _build_female_expanded_tree(person)}
             print_blue("\nFemale expanded tree")
-        elif print_expanded_tree == 1:
+        elif config["print_expanded_tree"] == 1:
             tree = {person: _build_male_expanded_tree(person)}
             print_blue("\nMale expanded tree")
         else:
             tree = {person: _build_complete_tree(person)}
-        print_tree(tree, occurance, person_repr)
+        # Since two persons can have same name, person_repr can't be used while building the tree dict
+        print_tree(
+            tree, occurance, person_repr, print_spouse=config["print_spouse_in_tree"]
+        )
 
     else:
         print_red(f"ID {p_id} is not present")
 
 
 def show_help(_=None, show_changes=False):
-    print_yellow("USAGE: Type following commands to do respective action")
-    help = f"""\
+    def print_help(help: str, new=[]):
+        for i, line in enumerate(help.split("\n")):
+            if show_changes and i in new:
+                print_green("(new)", end="")
+                print_yellow(" " * 3, line)
+            else:
+                print_yellow(" " * 8, line)
+
+    commands_help = f"""\
 new:\t\tAdd new person
 addp:\t\tAdd parent of a person
 addc:\t\tAdd children of a person
@@ -641,9 +658,6 @@ adds:\t\tAdd spouse of a person
 edit:\t\tEdit name of a person
 find:\t\tFind and show matching person
 tree:\t\tPrint tree of a person
-td:\t\tToggle details. Whether to show all ancestors
-tid:\t\tToggle ID. Whether to show ID with person
-texp:\t\tToggle expansion. Control the expansion of tree
 sp:\t\tShortest path between two persons
 rmrel:\t\tRemove relation between two persons
 rmperson:\tRemove person from lineage
@@ -659,20 +673,18 @@ Type ID or name directly in the command field to search
 Press {'<Ctrl>Z then Enter' if os.name == 'nt' else '<Ctrl>D'} in empty input to cancel
 """
 
-    new = [7, 8, 9, 10]
-    deprecated = []
-    for i, line in enumerate(help.split("\n"), 1):
-        if show_changes and i in new:
-            print_green("(new)", end="")
-            print_yellow(" " * 3, line)
-        elif i in deprecated:
-            print_yellow(" " * 8, line, end=" ")
-            print_red("(deprecated)")
-        else:
-            print_yellow(" " * 8, line)
+    toggles_help = """\
+ta:\t\tWhether to show all ancestors in person view
+tid:\t\tWhether to show ID of all persons in person view and tree
+tpid:\t\tWhether to show ID of parents in person view (if 'tid' is off)
+texp:\t\tControl the expansion of tree
+ts:\t\tWhether to show spouse in tree
+"""
 
-    if deprecated:
-        print_grey("deprecated commands will be removed from future versions\n")
+    print_yellow("USAGE: Type following commands to do respective action")
+    print_help(commands_help, [6])
+    print_yellow("\nTOGGLES/SWITCHES: Controls the output of other commands")
+    print_help(toggles_help, [])
 
 
 def _main():
@@ -701,9 +713,11 @@ def _main():
         "rmrel": remove_relation,
         "find": find,
         "tree": show_tree,
-        "td": toggle_print_more_details,
+        "ta": toggle_print_more_details,
         "tid": toggle_print_id_with_person,
+        "tpid": toggle_print_id_with_parent,
         "texp": toggle_print_expanded_tree,
+        "ts": toggle_print_spouse_in_tree,
         "sp": shortest_path,
         "noparent": no_parent,
         "oneparent": one_parent,
