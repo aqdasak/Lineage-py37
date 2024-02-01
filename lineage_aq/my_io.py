@@ -127,6 +127,7 @@ def print_tree(
     tree: dict[Person, dict],
     occurance: dict[Person, int] = {},
     person_repr: Callable[[Person], str] = repr,
+    print_spouse=True,
 ):
     """
     Print the dict of dict into tree
@@ -188,19 +189,31 @@ def print_tree(
                 if i == len(tree):
                     connector = replace(connector[:-LEN]) + LAST_BRANCH
 
+                spouse = ""
+                if print_spouse:
+                    if person.gender == "m":
+                        spouse = person.wife
+                    else:
+                        spouse = person.husband
+                    if spouse:
+                        spouse = [person_repr(s) for s in spouse]
+                        spouse = "- " + ",".join(spouse)
+                    else:
+                        spouse = ""
+
                 print(connector[LEN:], end="")
                 if person in duplicates:
                     if duplicates[person]:
-                        print_grey(person_repr(person), end="")
+                        print_grey(person_repr(person), spouse, end="")
                         _print_tree(subtree, connector + c.LIGHTBLACK_EX)
                     else:
-                        print(person_repr(person), end="")
+                        print(person_repr(person), spouse, end="")
                         duplicates[person] = True
                         _print_tree(subtree, connector)
                 else:
-                    print(person_repr(person), end="")
+                    print(person_repr(person), spouse, end="")
                     _print_tree(subtree, connector)
 
-    # When False for first time print it in regular color, then print in grey for all occurances
-    duplicates = {k: False for k, v in occurance.items() if v > 1}
+    # When value is False for first time, print the person in regular color, and then print it in grey for all other occurances
+    duplicates = {person: False for person, freq in occurance.items() if freq > 1}
     _print_tree(tree)

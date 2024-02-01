@@ -3,9 +3,16 @@ from collections import defaultdict
 from datetime import datetime
 import json
 import os
-from pathlib import Path
+from typing import Callable
 from lineage_aq import Lineage, Person, Relation, InvalidRelationError
 from sys import exit
+from lineage_aq.config import (
+    LINEAGE_HOME,
+    config,
+    save_config,
+    setup,
+)
+from lineage_aq.search import advanced_search
 from lineage_aq.my_io import (
     input_from,
     input_in_range,
@@ -22,12 +29,45 @@ from lineage_aq.my_io import (
     take_input,
 )
 
-LINEAGE_HOME = Path().home() / ".lineage"
 lineage_modified = False
-print_more_details = False
-print_id_with_person = 0  # Possible: 0(Off), 1(Parents only), 2(All)
-# Possible: 0(Expand female only), 1(Expand male only), 2(Complete)
-print_expanded_tree = 2
+
+
+def commands() -> dict[Callable, str]:
+    """Interactive commands for corresponding functions"""
+
+    return {
+        add_new_person: "new",
+        add_parent: "addp",
+        add_children: "addc",
+        add_spouse: "adds",
+        edit_name: "edit",
+        remove_person: "rmperson",
+        remove_relation: "rmrel",
+        find: "find",
+        show_tree: "tree",
+        toggle_print_all_ancestors: "ta",
+        toggle_print_id_with_person: "tid",
+        toggle_print_id_with_parent: "tpid",
+        toggle_print_expanded_tree: "texp",
+        toggle_print_spouse_in_tree: "ts",
+        shortest_path: "sp",
+        no_parent: "noparent",
+        one_parent: "oneparent",
+        all_persons: "showall",
+        all_relations: "showallrel",
+        save_to_file: "save",
+        safe_exit: "exit",
+        show_help: "help",
+    }
+
+
+def person_repr(person: Person, parent=False) -> str:
+    """Returns the representation of person based on certain switches"""
+
+    if config["print_id_with_person"] or (config["print_id_with_parent"] and parent):
+        return f"P{person.id}({person.name})"
+    else:
+        return person.name
 
 
 def add_new_person(lineage: Lineage):
@@ -209,13 +249,7 @@ def _print_person_details(person: Person):
                 print_person(p, end=", ")
             print_person(person[-1])
         else:
-            global print_id_with_person
-            if print_id_with_person == 2:
-                print_cyan(f"P{person.id}({person.name})", end=end)
-            else:
-                print_cyan(person.name, end=end)
-
-    global print_more_details
+            print_cyan(person_repr(person), end=end)
 
     father = person.father
     mother = person.mother
@@ -226,12 +260,9 @@ def _print_person_details(person: Person):
 
     if father:
         print_blue("Father:\t ", end="")
-        if print_id_with_person == 1:
-            print_cyan(f"P{father.id}({father.name})", end="")
-        else:
-            print_person(father, end="")
+        print_cyan(person_repr(father, parent=True), end="")
 
-        if print_more_details:
+        if config["print_all_ancestors"]:
             p = father.father
             while p:
                 print_cyan(" -> ", end="")
@@ -239,18 +270,15 @@ def _print_person_details(person: Person):
                 p = p.father
         print()
 
-    if print_more_details and father and mother:
+    if config["print_all_ancestors"] and father and mother:
         # Space to reduce clutter
         print()
 
     if mother:
         print_blue("Mother:\t ", end="")
-        if print_id_with_person == 1:
-            print_cyan(f"P{mother.id}({mother.name})", end="")
-        else:
-            print_person(mother, end="")
+        print_cyan(person_repr(mother, parent=True), end="")
 
-        if print_more_details:
+        if config["print_all_ancestors"]:
             p = mother.father
             while p:
                 print_cyan(" -> ", end="")
@@ -295,34 +323,73 @@ def _print_person_details(person: Person):
         print_person(sister)
 
 
-def toggle_print_more_details(_):
-    global print_more_details
-    print_more_details = not print_more_details
-    if print_more_details:
-        print("Details are on")
+def toggle_print_all_ancestors(_):
+    global config
+    config["print_all_ancestors"] = not config["print_all_ancestors"]
+
+    command = commands()[toggle_print_all_ancestors]
+    if config["print_all_ancestors"]:
+        print_blue(f"{command}=ON")
+        print("Ancestors will be shown")
     else:
-        print("Details are off")
+        print_blue(f"{command}=OFF")
+        print("Ancestors will not be shown")
 
 
 def toggle_print_id_with_person(_):
-    global print_id_with_person
-    print_id_with_person = (print_id_with_person + 1) % 3
-    if print_id_with_person == 0:
+    global config
+    config["print_id_with_person"] = not config["print_id_with_person"]
+
+    command = commands()[toggle_print_id_with_person]
+    if config["print_id_with_person"]:
+        print_blue(f"{command}=ON")
+        print("ID will be shown for all")
+    else:
+        print_blue(f"{command}=OFF")
         print("ID will not be shown")
-    elif print_id_with_person == 1:
+
+
+def toggle_print_id_with_parent(_):
+    global config
+    config["print_id_with_parent"] = not config["print_id_with_parent"]
+
+    command = commands()[toggle_print_id_with_parent]
+    if config["print_id_with_parent"]:
+        print_blue(f"{command}=ON")
         print("Parents ID will be shown")
     else:
-        print("ID will be shown for all")
+        print_blue(f"{command}=OFF")
+        tid = commands()[toggle_print_id_with_person]
+        print(f"Parents ID will not be shown, if {tid} is off")
+
+
+def toggle_print_spouse_in_tree(_):
+    global config
+    config["print_spouse_in_tree"] = not config["print_spouse_in_tree"]
+
+    command = commands()[toggle_print_spouse_in_tree]
+    if config["print_spouse_in_tree"]:
+        print_blue(f"{command}=ON")
+        print("Spouse will be shown in tree")
+    else:
+        print_blue(f"{command}=OFF")
+        print("Spouse will not be shown in tree")
 
 
 def toggle_print_expanded_tree(_):
-    global print_expanded_tree
-    print_expanded_tree = (print_expanded_tree + 1) % 3
-    if print_expanded_tree == 0:
-        print("Only females will be expanded now")
-    elif print_expanded_tree == 1:
-        print("Only males will be expanded now")
+    global config
+
+    config["print_expanded_tree"] = (config["print_expanded_tree"] + 1) % 3
+
+    command = commands()[toggle_print_expanded_tree]
+    if config["print_expanded_tree"] == 0:
+        print_blue(f"{command}=FEMALE")
+        print("Only females in tree will be expanded now")
+    elif config["print_expanded_tree"] == 1:
+        print_blue(f"{command}=MALE")
+        print("Only males in tree will be expanded now")
     else:
+        print_blue(f"{command}=ALL")
         print("Complete tree will be expanded now")
 
 
@@ -335,12 +402,15 @@ def _find_by_id(lineage: Lineage, id: int):
 
 
 def _find_by_name(lineage: Lineage, name: str):
-    persons = lineage.find_person_by_name(name)
+    all_persons = {p.name: p for p in lineage.all_persons()}
+
+    persons = advanced_search(name, all_persons.keys())
     if len(persons) == 0:
         print_red("Name not found")
         return
 
-    for person in persons:
+    for person_name in persons:
+        person = all_persons[person_name]
         print_grey("─" * 50)
         _print_person_details(person)
 
@@ -364,14 +434,6 @@ def all_relations(lineage: Lineage):
     print_heading("ALL RELATIONS IN LINEAGE")
     for relation in lineage.all_relations():
         print_cyan(relation)
-
-
-def initialize_save_directories():
-    path = LINEAGE_HOME
-    path.mkdir(parents=True, exist_ok=True)
-
-    path = path / "autosave"
-    path.mkdir(parents=True, exist_ok=True)
 
 
 def save_to_file(lineage: Lineage):
@@ -459,7 +521,7 @@ def load_from_file() -> Lineage | None:
 
 
 def safe_exit(lineage: Lineage):
-    save_settings()
+    save_config()
     global lineage_modified
     if not lineage_modified:
         print_yellow("Exiting...")
@@ -473,40 +535,6 @@ def safe_exit(lineage: Lineage):
         exit(0)
 
     print_red("Exit aborted")
-
-
-def load_settings():
-    file = LINEAGE_HOME / "settings/settings.json"
-
-    global print_more_details
-    global print_id_with_person
-    global print_expanded_tree
-    try:
-        with open(file) as f:
-            settings = json.load(f)
-            print_more_details = settings["print_more_details"]
-            print_id_with_person = min(settings["print_id_with_person"], 2)
-            print_expanded_tree = min(settings["print_expanded_tree"], 2)
-    except Exception:
-        pass
-
-
-def save_settings():
-    path = LINEAGE_HOME / "settings"
-    path.mkdir(parents=True, exist_ok=True)
-
-    file = path / "settings.json"
-    global print_more_details
-    global print_id_with_person
-    global print_expanded_tree
-
-    with open(file, "w") as f:
-        settings = {
-            "print_more_details": print_more_details,
-            "print_id_with_person": print_id_with_person,
-            "print_expanded_tree": print_expanded_tree,
-        }
-        json.dump(settings, f)
 
 
 def shortest_path(lineage: Lineage):
@@ -573,12 +601,6 @@ def one_parent(lineage: Lineage):
 
 
 def show_tree(lineage: Lineage):
-    def person_repr(person: Person) -> str:
-        if print_id_with_person == 2:
-            return f"P{person.id}({person.name})"
-        else:
-            return person.name
-
     def _build_complete_tree(person: Person) -> dict[Person, dict]:
         tree = {}
         children = sorted(person.children, key=lambda p: p.id)
@@ -617,23 +639,33 @@ def show_tree(lineage: Lineage):
 
     occurance = defaultdict(int)
     if person is not None:
-        if print_expanded_tree == 0:
+        if config["print_expanded_tree"] == 0:
             tree = {person: _build_female_expanded_tree(person)}
             print_blue("\nFemale expanded tree")
-        elif print_expanded_tree == 1:
+        elif config["print_expanded_tree"] == 1:
             tree = {person: _build_male_expanded_tree(person)}
             print_blue("\nMale expanded tree")
         else:
             tree = {person: _build_complete_tree(person)}
-        print_tree(tree, occurance, person_repr)
+        # Since two persons can have same name, person_repr can't be used while building the tree dict
+        print_tree(
+            tree, occurance, person_repr, print_spouse=config["print_spouse_in_tree"]
+        )
 
     else:
         print_red(f"ID {p_id} is not present")
 
 
 def show_help(_=None, show_changes=False):
-    print_yellow("USAGE: Type following commands to do respective action")
-    help = f"""\
+    def print_help(help: str, new=[]):
+        for i, line in enumerate(help.split("\n")):
+            if show_changes and i in new:
+                print_green("(new)", end="")
+                print_yellow(" " * 3, line)
+            else:
+                print_yellow(" " * 8, line)
+
+    commands_help = f"""\
 new:\t\tAdd new person
 addp:\t\tAdd parent of a person
 addc:\t\tAdd children of a person
@@ -641,9 +673,6 @@ adds:\t\tAdd spouse of a person
 edit:\t\tEdit name of a person
 find:\t\tFind and show matching person
 tree:\t\tPrint tree of a person
-td:\t\tToggle details. Whether to show all ancestors
-tid:\t\tToggle ID. Whether to show ID with person
-texp:\t\tToggle expansion. Control the expansion of tree
 sp:\t\tShortest path between two persons
 rmrel:\t\tRemove relation between two persons
 rmperson:\tRemove person from lineage
@@ -659,31 +688,34 @@ Type ID or name directly in the command field to search
 Press {'<Ctrl>Z then Enter' if os.name == 'nt' else '<Ctrl>D'} in empty input to cancel
 """
 
-    new = [7, 8, 9, 10]
-    deprecated = []
-    for i, line in enumerate(help.split("\n"), 1):
-        if show_changes and i in new:
-            print_green("(new)", end="")
-            print_yellow(" " * 3, line)
-        elif i in deprecated:
-            print_yellow(" " * 8, line, end=" ")
-            print_red("(deprecated)")
-        else:
-            print_yellow(" " * 8, line)
+    toggles_help = """\
+ta:\t\tWhether to show all ancestors in person view
+tid:\t\tWhether to show ID of all persons in person view and tree
+tpid:\t\tWhether to show ID of parents in person view (if 'tid' is off)
+texp:\t\tControl the expansion of tree
+ts:\t\tWhether to show spouse in tree
+"""
 
-    if deprecated:
-        print_grey("deprecated commands will be removed from future versions\n")
+    print_yellow("USAGE: Type following commands to do respective action")
+    print_help(commands_help, [6])
+    print_yellow("\nTOGGLES/SWITCHES: Controls the output of other commands")
+    print_help(toggles_help, [])
 
 
 def _main():
     print_heading("LINEAGE")
     lineage = None
 
-    inp = input_from(
-        "Do you want to load lineage from file (y/n)? ", ("y", "n", "yes", "no")
-    ).lower()
-    if inp in ("y", "yes"):
-        lineage = load_from_file()
+    try:
+        inp = input_from(
+            "Do you want to load lineage from file (y/n)? ", ("y", "n", "yes", "no")
+        ).lower()
+        if inp in ("y", "yes"):
+            lineage = load_from_file()
+    except (KeyboardInterrupt, Exception) as e:
+        print_red("\nSomething went wrong")
+        print(e)
+        exit()
 
     show_help(show_changes=True)
 
@@ -691,35 +723,14 @@ def _main():
         print_yellow("Creating new lineage\n")
         lineage = Lineage()
 
-    commands = {
-        "new": add_new_person,
-        "addp": add_parent,
-        "addc": add_children,
-        "adds": add_spouse,
-        "edit": edit_name,
-        "rmperson": remove_person,
-        "rmrel": remove_relation,
-        "find": find,
-        "tree": show_tree,
-        "td": toggle_print_more_details,
-        "tid": toggle_print_id_with_person,
-        "texp": toggle_print_expanded_tree,
-        "sp": shortest_path,
-        "noparent": no_parent,
-        "oneparent": one_parent,
-        "showall": all_persons,
-        "showallrel": all_relations,
-        "save": save_to_file,
-        "exit": safe_exit,
-        "help": show_help,
-    }
+    commands_fn = {v: k for k, v in commands().items()}
 
     while True:
         try:
             command = non_empty_input("# ").strip()
             command_ = command.replace(" ", "").lower()
-            if command_ in commands:
-                commands[command_](lineage)
+            if command_ in commands_fn:
+                commands_fn[command_](lineage)
             else:
                 print_heading("FIND PERSON")
                 if command.isdigit():
@@ -741,8 +752,7 @@ def _main():
 
 
 def main():
-    load_settings()
-    initialize_save_directories()
+    setup()
     try:
         _main()
     except KeyboardInterrupt:
