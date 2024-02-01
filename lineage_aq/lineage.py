@@ -177,7 +177,6 @@ class Person:
     def add_spouse(self, other: Person) -> None:
         self.__validate_is_Person_object(other)
 
-        # if {self.__gender, other.__gender} != {'m', 'f'}:
         if self.__gender == other.__gender:
             raise ValueError("Gender is same")
 
@@ -192,7 +191,6 @@ class Person:
         wife.__add_relation(husband, Relation.HUSBAND)
 
     def __repr__(self) -> str:
-        # return f'P{self.id}({self.name.split(" ")[0]})'
         return f"P{self.id}({self.name})"
 
 

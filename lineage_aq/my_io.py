@@ -214,6 +214,6 @@ def print_tree(
                     print(person_repr(person), spouse, end="")
                     _print_tree(subtree, connector)
 
-    # When False for first time print it in regular color, then print in grey for all occurances
-    duplicates = {k: False for k, v in occurance.items() if v > 1}
+    # When value is False for first time, print the person in regular color, and then print it in grey for all other occurances
+    duplicates = {person: False for person, freq in occurance.items() if freq > 1}
     _print_tree(tree)

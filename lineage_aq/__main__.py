@@ -3,10 +3,16 @@ from collections import defaultdict
 from datetime import datetime
 import json
 import os
-from pathlib import Path
 from typing import Callable
 from lineage_aq import Lineage, Person, Relation, InvalidRelationError
 from sys import exit
+from lineage_aq.config import (
+    LINEAGE_HOME,
+    config,
+    save_config,
+    setup,
+)
+from lineage_aq.search import advanced_search
 from lineage_aq.my_io import (
     input_from,
     input_in_range,
@@ -23,19 +29,12 @@ from lineage_aq.my_io import (
     take_input,
 )
 
-LINEAGE_HOME = Path().home() / ".lineage"
 lineage_modified = False
-config = {
-    "print_all_ancestors": False,
-    "print_id_with_person": False,
-    "print_id_with_parent": False,
-    # Possible: 0(Expand female only), 1(Expand male only), 2(Complete)
-    "print_expanded_tree": 2,
-    "print_spouse_in_tree": True,
-}
 
 
 def commands() -> dict[Callable, str]:
+    """Interactive commands for corresponding functions"""
+
     return {
         add_new_person: "new",
         add_parent: "addp",
@@ -63,6 +62,8 @@ def commands() -> dict[Callable, str]:
 
 
 def person_repr(person: Person, parent=False) -> str:
+    """Returns the representation of person based on certain switches"""
+
     if config["print_id_with_person"] or (config["print_id_with_parent"] and parent):
         return f"P{person.id}({person.name})"
     else:
@@ -401,12 +402,15 @@ def _find_by_id(lineage: Lineage, id: int):
 
 
 def _find_by_name(lineage: Lineage, name: str):
-    persons = lineage.find_person_by_name(name)
+    all_persons = {p.name: p for p in lineage.all_persons()}
+
+    persons = advanced_search(name, all_persons.keys())
     if len(persons) == 0:
         print_red("Name not found")
         return
 
-    for person in persons:
+    for person_name in persons:
+        person = all_persons[person_name]
         print_grey("─" * 50)
         _print_person_details(person)
 
@@ -430,14 +434,6 @@ def all_relations(lineage: Lineage):
     print_heading("ALL RELATIONS IN LINEAGE")
     for relation in lineage.all_relations():
         print_cyan(relation)
-
-
-def initialize_save_directories():
-    path = LINEAGE_HOME
-    path.mkdir(parents=True, exist_ok=True)
-
-    path = path / "autosave"
-    path.mkdir(parents=True, exist_ok=True)
 
 
 def save_to_file(lineage: Lineage):
@@ -525,7 +521,7 @@ def load_from_file() -> Lineage | None:
 
 
 def safe_exit(lineage: Lineage):
-    save_settings()
+    save_config()
     global lineage_modified
     if not lineage_modified:
         print_yellow("Exiting...")
@@ -539,37 +535,6 @@ def safe_exit(lineage: Lineage):
         exit(0)
 
     print_red("Exit aborted")
-
-
-def load_settings():
-    file = LINEAGE_HOME / "settings/settings.json"
-
-    global config
-    try:
-        with open(file) as f:
-            config.update(json.load(f))
-            if not isinstance(config.get("print_all_ancestors"), bool):
-                config["print_all_ancestors"] = False
-            if not isinstance(config.get("print_id_with_person"), bool):
-                config["print_id_with_person"] = False
-            if not isinstance(config.get("print_id_with_parent"), bool):
-                config["print_id_with_parent"] = False
-            if not 0 <= config.get("print_expanded_tree") <= 2:
-                config["print_expanded_tree"] = 2
-            if not isinstance(config.get("print_spouse_in_tree"), bool):
-                config["print_spouse_in_tree"] = True
-    except Exception:
-        pass
-
-
-def save_settings():
-    path = LINEAGE_HOME / "settings"
-    path.mkdir(parents=True, exist_ok=True)
-
-    file = path / "settings.json"
-
-    with open(file, "w") as f:
-        json.dump(config, f)
 
 
 def shortest_path(lineage: Lineage):
@@ -741,11 +706,16 @@ def _main():
     print_heading("LINEAGE")
     lineage = None
 
-    inp = input_from(
-        "Do you want to load lineage from file (y/n)? ", ("y", "n", "yes", "no")
-    ).lower()
-    if inp in ("y", "yes"):
-        lineage = load_from_file()
+    try:
+        inp = input_from(
+            "Do you want to load lineage from file (y/n)? ", ("y", "n", "yes", "no")
+        ).lower()
+        if inp in ("y", "yes"):
+            lineage = load_from_file()
+    except (KeyboardInterrupt, Exception) as e:
+        print_red("\nSomething went wrong")
+        print(e)
+        exit()
 
     show_help(show_changes=True)
 
@@ -782,8 +752,7 @@ def _main():
 
 
 def main():
-    load_settings()
-    initialize_save_directories()
+    setup()
     try:
         _main()
     except KeyboardInterrupt:
