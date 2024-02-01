@@ -1,3 +1,4 @@
+from __future__ import annotations
 from lineage_aq.config import alternate_spells
 
 

@@ -5,10 +5,6 @@ from colorama import Fore as c, Style
 from lineage_aq import Person
 
 
-def arg_parse(*args):
-    return " ".join(tuple(map(lambda x: str(x), args)))
-
-
 def take_input(arg):
     arg = c.LIGHTGREEN_EX + arg + c.LIGHTYELLOW_EX
     inp = input(arg)
@@ -67,42 +63,41 @@ def input_in_range(msg: str, a: int, b: int = None) -> float:
             print_red("Warning: Please input a number")
 
 
-def print_red(*args, end="\n"):
-    end = c.LIGHTRED_EX + end + c.RESET
-    print(c.LIGHTRED_EX + arg_parse(*args) + c.RESET, end=end)
+def _print_colored(color, *args, **kwargs):
+    print(color, end="")
+    print(*args, **kwargs)
+    print(c.RESET, end="")
 
 
-def print_green(*args, end="\n"):
-    end = c.LIGHTGREEN_EX + end + c.RESET
-    print(c.LIGHTGREEN_EX + arg_parse(*args) + c.RESET, end=end)
+def print_red(*args, **kwargs):
+    _print_colored(c.LIGHTRED_EX, *args, **kwargs)
 
 
-def print_blue(*args, end="\n"):
-    end = c.LIGHTBLUE_EX + end + c.RESET
-    print(c.LIGHTBLUE_EX + arg_parse(*args) + c.RESET, end=end)
+def print_green(*args, **kwargs):
+    _print_colored(c.LIGHTGREEN_EX, *args, **kwargs)
 
 
-def print_yellow(*args, end="\n"):
-    end = c.LIGHTYELLOW_EX + end + c.RESET
-    print(c.LIGHTYELLOW_EX + arg_parse(*args) + c.RESET, end=end)
+def print_blue(*args, **kwargs):
+    _print_colored(c.LIGHTBLUE_EX, *args, **kwargs)
 
 
-def print_cyan(*args, end="\n"):
-    end = c.LIGHTCYAN_EX + end + c.RESET
-    print(c.LIGHTCYAN_EX + arg_parse(*args) + c.RESET, end=end)
+def print_yellow(*args, **kwargs):
+    _print_colored(c.LIGHTYELLOW_EX, *args, **kwargs)
 
 
-def print_grey(*args, end="\n"):
-    end = c.LIGHTBLACK_EX + end + c.RESET
-    print(c.LIGHTBLACK_EX + arg_parse(*args) + c.RESET, end=end)
+def print_cyan(*args, **kwargs):
+    _print_colored(c.LIGHTCYAN_EX, *args, **kwargs)
+
+
+def print_grey(*args, **kwargs):
+    _print_colored(c.LIGHTBLACK_EX, *args, **kwargs)
 
 
 def print_heading(*args):
     print()
     print(Style.BRIGHT + c.LIGHTMAGENTA_EX, end="")
-    st = arg_parse(*args)
-    print(st)
-    print("-" * len(st), end="")
+    print(*args)
+    print("-" * len(" ".join(args)), end="")
     print(c.RESET + Style.NORMAL)
 
 
