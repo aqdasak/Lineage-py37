@@ -5,10 +5,6 @@ from colorama import Fore as c, Style
 from lineage_aq import Person
 
 
-def arg_parse(*args):
-    return " ".join(tuple(map(lambda x: str(x), args)))
-
-
 def take_input(arg):
     arg = c.LIGHTGREEN_EX + arg + c.LIGHTYELLOW_EX
     inp = input(arg)
@@ -67,60 +63,67 @@ def input_in_range(msg: str, a: int, b: int = None) -> float:
             print_red("Warning: Please input a number")
 
 
-def print_red(*args, end="\n"):
-    end = c.LIGHTRED_EX + end + c.RESET
-    print(c.LIGHTRED_EX + arg_parse(*args) + c.RESET, end=end)
+def _print_colored(color, *args, **kwargs):
+    print(color, end="")
+    print(*args, **kwargs)
+    print(c.RESET, end="")
 
 
-def print_green(*args, end="\n"):
-    end = c.LIGHTGREEN_EX + end + c.RESET
-    print(c.LIGHTGREEN_EX + arg_parse(*args) + c.RESET, end=end)
+def print_red(*args, **kwargs):
+    _print_colored(c.LIGHTRED_EX, *args, **kwargs)
 
 
-def print_blue(*args, end="\n"):
-    end = c.LIGHTBLUE_EX + end + c.RESET
-    print(c.LIGHTBLUE_EX + arg_parse(*args) + c.RESET, end=end)
+def print_green(*args, **kwargs):
+    _print_colored(c.LIGHTGREEN_EX, *args, **kwargs)
 
 
-def print_yellow(*args, end="\n"):
-    end = c.LIGHTYELLOW_EX + end + c.RESET
-    print(c.LIGHTYELLOW_EX + arg_parse(*args) + c.RESET, end=end)
+def print_blue(*args, **kwargs):
+    _print_colored(c.LIGHTBLUE_EX, *args, **kwargs)
 
 
-def print_cyan(*args, end="\n"):
-    end = c.LIGHTCYAN_EX + end + c.RESET
-    print(c.LIGHTCYAN_EX + arg_parse(*args) + c.RESET, end=end)
+def print_yellow(*args, **kwargs):
+    _print_colored(c.LIGHTYELLOW_EX, *args, **kwargs)
 
 
-def print_grey(*args, end="\n"):
-    end = c.LIGHTBLACK_EX + end + c.RESET
-    print(c.LIGHTBLACK_EX + arg_parse(*args) + c.RESET, end=end)
+def print_cyan(*args, **kwargs):
+    _print_colored(c.LIGHTCYAN_EX, *args, **kwargs)
+
+
+def print_grey(*args, **kwargs):
+    _print_colored(c.LIGHTBLACK_EX, *args, **kwargs)
+
+
+def print_magenta(*args, **kwargs):
+    _print_colored(c.LIGHTMAGENTA_EX, *args, **kwargs)
 
 
 def print_heading(*args):
     print()
     print(Style.BRIGHT + c.LIGHTMAGENTA_EX, end="")
-    st = arg_parse(*args)
-    print(st)
-    print("-" * len(st), end="")
+    print(*args)
+    print("-" * len(" ".join(args)), end="")
     print(c.RESET + Style.NORMAL)
 
 
-def print_id_name_in_box(id: str, name: str):
+def print_id_name_in_box(person: Person):
+    id = str(person.id)
+    name = person.name
+    print_box = print_green if person.gender == "m" else print_magenta
+
     n_len = len(name)
     i_len = len(id)
-    print_green("\t ╭" + "─" * (max(n_len, i_len) + 2) + "╮")
+    print_box("\t ╭" + "─" * (max(n_len, i_len) + 2) + "╮")
 
     print_blue("ID:\t", end=" ")
-    print_green("│", end=" ")
-    print_green(id, end=" ")
-    print_green(" " * max(n_len - i_len, 0) + "│")
+    print_box("│", end=" ")
+    print_box(id, end=" ")
+    print_box(" " * max(n_len - i_len, 0) + "│")
 
     print_blue("Name:\t", end=" ")
-    print_green("│", end=" ")
-    print_green(name, end=" ")
-    print_green(" " * max(i_len - n_len, 0) + "│")
-    print_green("\t ╰" + "─" * (max(n_len, i_len) + 2) + "╯")
+    print_box("│", end=" ")
+    print_box(name, end=" ")
+    print_box(" " * max(i_len - n_len, 0) + "│")
+    print_box("\t ╰" + "─" * (max(n_len, i_len) + 2) + "╯")
 
 
 def print_tree(
@@ -196,8 +199,10 @@ def print_tree(
                     else:
                         spouse = person.husband
                     if spouse:
-                        spouse = [person_repr(s) for s in spouse]
-                        spouse = "- " + ",".join(spouse)
+                        spouse = [
+                            person_repr(s) for s in sorted(spouse, key=lambda p: p.id)
+                        ]
+                        spouse = "- " + ", ".join(spouse)
                     else:
                         spouse = ""
 
