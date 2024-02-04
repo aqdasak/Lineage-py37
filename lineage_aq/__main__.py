@@ -121,7 +121,10 @@ def add_new_person(lineage: Lineage):
         return True
 
     print_heading("ADD NEW PERSON")
-    name = non_empty_input("Input name: ")
+    name = non_empty_input("Input name: ").strip()
+    if len(name) == 0:
+        print_red("Name is empty")
+        return
     if not whether_to_continue_if_found(name):
         return
 
@@ -242,6 +245,10 @@ def remove_relation(lineage: Lineage):
     lineage_modified = True
 
 
+def sorted_by_id(persons: list[Person]):
+    return sorted(persons, key=lambda person: person.id)
+
+
 def _print_person_details(person: Person):
     def print_person(person: Person | list[Person], end="\n"):
         if isinstance(person, list):
@@ -286,21 +293,21 @@ def _print_person_details(person: Person):
                 p = p.father
         print()
 
-    print_id_name_in_box(str(person.id), person.name)
+    print_id_name_in_box(person)
 
     if husband:
         print_blue("Husband: ", end="")
-        print_person(husband)
+        print_person(sorted_by_id(husband))
 
     if wife:
         print_blue("Wife:\t ", end="")
-        print_person(wife)
+        print_person(sorted_by_id(wife))
     if sons:
         print_blue("Son:\t ", end="")
-        print_person(sons)
+        print_person(sorted_by_id(sons))
     if daughters:
         print_blue("Daughter:", end="")
-        print_person(daughters)
+        print_person(sorted_by_id(daughters))
 
     brother = []
     sister = []
@@ -311,16 +318,16 @@ def _print_person_details(person: Person):
         brother += mother.sons
         sister += mother.daughters
 
-    brother = sorted(set(brother) - {person}, key=lambda person: person.id)
-    sister = sorted(set(sister) - {person}, key=lambda person: person.id)
+    brother = sorted_by_id(set(brother) - {person})
+    sister = sorted_by_id(set(sister) - {person})
     if brother or sister:
         print()
     if brother:
         print_blue("Brother: ", end="")
-        print_person(brother)
+        print_person(sorted_by_id(brother))
     if sister:
         print_blue("Sister:  ", end="")
-        print_person(sister)
+        print_person(sorted_by_id(sister))
 
 
 def toggle_print_all_ancestors(_):
@@ -402,17 +409,21 @@ def _find_by_id(lineage: Lineage, id: int):
 
 
 def _find_by_name(lineage: Lineage, name: str):
-    all_persons = {p.name: p for p in lineage.all_persons()}
+    all_persons: dict[str, list[Person]] = defaultdict(list)
+    for person in lineage.all_persons():
+        # Multiple persons can have same name
+        all_persons[person.name.replace(" ", "")].append(person)
 
-    persons = advanced_search(name, all_persons.keys())
-    if len(persons) == 0:
+    person_names = advanced_search(name.replace(" ", ""), all_persons.keys())
+    if len(person_names) == 0:
         print_red("Name not found")
         return
 
-    for person_name in persons:
-        person = all_persons[person_name]
-        print_grey("─" * 50)
-        _print_person_details(person)
+    for person_name in person_names:
+        persons = all_persons[person_name]
+        for person in persons:
+            print_grey("─" * 50)
+            _print_person_details(person)
 
 
 def find(lineage: Lineage):
@@ -577,7 +588,7 @@ def no_parent(lineage: Lineage):
         print_red("All persons are having at least one parent")
         return
 
-    no_parent = sorted(no_parent, key=lambda p: p.id)
+    no_parent = sorted_by_id(no_parent)
     for i in no_parent:
         print(i)
     print_cyan("Total persons:", len(no_parent))
@@ -593,7 +604,7 @@ def one_parent(lineage: Lineage):
         print_red("No person is having only single parent")
         return
 
-    single_parent = sorted(single_parent, key=lambda p: p.id)
+    single_parent = sorted_by_id(single_parent)
     for i in single_parent:
         print(i)
 
@@ -603,7 +614,7 @@ def one_parent(lineage: Lineage):
 def show_tree(lineage: Lineage):
     def _build_complete_tree(person: Person) -> dict[Person, dict]:
         tree = {}
-        children = sorted(person.children, key=lambda p: p.id)
+        children = sorted_by_id(person.children)
         for child in children:
             occurance[child] += 1
             tree[child] = _build_complete_tree(child)
@@ -611,11 +622,11 @@ def show_tree(lineage: Lineage):
 
     def _build_male_expanded_tree(person: Person) -> dict[Person, dict]:
         tree = {}
-        daughters = sorted(person.daughters, key=lambda p: p.id)
+        daughters = sorted_by_id(person.daughters)
         for daughter in daughters:
             tree[daughter] = {}
 
-        sons = sorted(person.sons, key=lambda p: p.id)
+        sons = sorted_by_id(person.sons)
         for son in sons:
             occurance[son] += 1
             tree[son] = _build_male_expanded_tree(son)
@@ -623,11 +634,11 @@ def show_tree(lineage: Lineage):
 
     def _build_female_expanded_tree(person: Person) -> dict[Person, dict]:
         tree = {}
-        sons = sorted(person.sons, key=lambda p: p.id)
+        sons = sorted_by_id(person.sons)
         for son in sons:
             tree[son] = {}
 
-        daughters = sorted(person.daughters, key=lambda p: p.id)
+        daughters = sorted_by_id(person.daughters)
         for daughter in daughters:
             occurance[daughter] += 1
             tree[daughter] = _build_female_expanded_tree(daughter)

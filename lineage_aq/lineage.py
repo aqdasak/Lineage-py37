@@ -98,7 +98,7 @@ class Person:
     def relatives_dict(self) -> dict[Relation, list[Person]]:
         return self.__relatives_dict
 
-    def __add_relation(self, to: Person, relation: Relation) -> None:
+    def _add_relation(self, to: Person, relation: Relation) -> None:
         if self is to:
             raise InvalidRelationError("Can't be related to self")
         if self.relation_with(to) is not None:
@@ -168,8 +168,8 @@ class Person:
                     f"{child.father} and {self} are not spouse. {child.father} is father of {child}"
                 )
 
-        self.__add_relation(child, child_rel)
-        child.__add_relation(self, parent_rel)
+        self._add_relation(child, child_rel)
+        child._add_relation(self, parent_rel)
 
     def add_parent(self, parent: Person) -> None:
         parent.add_child(self)
@@ -187,8 +187,8 @@ class Person:
             husband = other
             wife = self
 
-        husband.__add_relation(wife, Relation.WIFE)
-        wife.__add_relation(husband, Relation.HUSBAND)
+        husband._add_relation(wife, Relation.WIFE)
+        wife._add_relation(husband, Relation.HUSBAND)
 
     def __repr__(self) -> str:
         return f"P{self.id}({self.name})"
@@ -290,7 +290,7 @@ class Lineage:
             for prev_id1, prev_id2, relation in relations_data:
                 try:
                     prev_id1, prev_id2 = int(prev_id1), int(prev_id2)
-                    persons_dict[prev_id1]._Person__add_relation(
+                    persons_dict[prev_id1]._add_relation(
                         persons_dict[prev_id2], Relation[relation]
                     )
 

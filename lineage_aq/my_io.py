@@ -93,6 +93,10 @@ def print_grey(*args, **kwargs):
     _print_colored(c.LIGHTBLACK_EX, *args, **kwargs)
 
 
+def print_magenta(*args, **kwargs):
+    _print_colored(c.LIGHTMAGENTA_EX, *args, **kwargs)
+
+
 def print_heading(*args):
     print()
     print(Style.BRIGHT + c.LIGHTMAGENTA_EX, end="")
@@ -101,21 +105,25 @@ def print_heading(*args):
     print(c.RESET + Style.NORMAL)
 
 
-def print_id_name_in_box(id: str, name: str):
+def print_id_name_in_box(person: Person):
+    id = str(person.id)
+    name = person.name
+    print_box = print_green if person.gender == "m" else print_magenta
+
     n_len = len(name)
     i_len = len(id)
-    print_green("\t ╭" + "─" * (max(n_len, i_len) + 2) + "╮")
+    print_box("\t ╭" + "─" * (max(n_len, i_len) + 2) + "╮")
 
     print_blue("ID:\t", end=" ")
-    print_green("│", end=" ")
-    print_green(id, end=" ")
-    print_green(" " * max(n_len - i_len, 0) + "│")
+    print_box("│", end=" ")
+    print_box(id, end=" ")
+    print_box(" " * max(n_len - i_len, 0) + "│")
 
     print_blue("Name:\t", end=" ")
-    print_green("│", end=" ")
-    print_green(name, end=" ")
-    print_green(" " * max(i_len - n_len, 0) + "│")
-    print_green("\t ╰" + "─" * (max(n_len, i_len) + 2) + "╯")
+    print_box("│", end=" ")
+    print_box(name, end=" ")
+    print_box(" " * max(i_len - n_len, 0) + "│")
+    print_box("\t ╰" + "─" * (max(n_len, i_len) + 2) + "╯")
 
 
 def print_tree(
@@ -191,8 +199,10 @@ def print_tree(
                     else:
                         spouse = person.husband
                     if spouse:
-                        spouse = [person_repr(s) for s in spouse]
-                        spouse = "- " + ",".join(spouse)
+                        spouse = [
+                            person_repr(s) for s in sorted(spouse, key=lambda p: p.id)
+                        ]
+                        spouse = "- " + ", ".join(spouse)
                     else:
                         spouse = ""
 
